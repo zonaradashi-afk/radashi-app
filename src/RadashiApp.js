@@ -19,12 +19,8 @@ const nearbyUsers = [
 ];
 
 function Avatar({ foto, size = 48, emoji = "😎" }) {
-  if (foto) return (
-    <img src={foto} alt="perfil" style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", border: "2px solid " + COLORS.orange, flexShrink: 0 }} />
-  );
-  return (
-    <div style={{ width: size, height: size, borderRadius: "50%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.45, flexShrink: 0 }}>{emoji}</div>
-  );
+  if (foto) return <img src={foto} alt="perfil" style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", border: "2px solid " + COLORS.orange, flexShrink: 0 }} />;
+  return <div style={{ width: size, height: size, borderRadius: "50%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.45, flexShrink: 0 }}>{emoji}</div>;
 }
 
 function EditarPerfil({ user, perfil, onGuardar, onCancelar }) {
@@ -107,12 +103,11 @@ function NuevoPost({ user, perfil, onCerrar }) {
     setLoading(true);
     try {
       await addDoc(collection(db, "posts"), {
-        texto,
-        userId: user.uid,
+        texto, userId: user.uid,
         userNombre: perfil.nombre || user.email,
         userFoto: perfil.foto || null,
         userMoto: perfil.marca ? perfil.marca + " " + perfil.modelo : null,
-        likes: 0,
+        likes: 0, comentarios: 0,
         createdAt: serverTimestamp(),
       });
       onCerrar();
@@ -126,13 +121,7 @@ function NuevoPost({ user, perfil, onCerrar }) {
         <div style={{ width: 40, height: 4, background: COLORS.border, borderRadius: 2, margin: "0 auto 20px" }} />
         <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 16 }}>
           <Avatar foto={perfil.foto} size={44} />
-          <textarea
-            value={texto}
-            onChange={e => setTexto(e.target.value)}
-            placeholder="¿Qué le pasa a tu moto hoy? ¿Salida planeada? 🏍️"
-            autoFocus
-            style={{ flex: 1, background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 12, padding: "12px 16px", color: COLORS.text, fontSize: 14, outline: "none", resize: "none", minHeight: 100, fontFamily: "system-ui, sans-serif" }}
-          />
+          <textarea value={texto} onChange={e => setTexto(e.target.value)} placeholder="¿Qué le pasa a tu moto hoy? 🏍️" autoFocus style={{ flex: 1, background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 12, padding: "12px 16px", color: COLORS.text, fontSize: 14, outline: "none", resize: "none", minHeight: 100, fontFamily: "system-ui, sans-serif" }} />
         </div>
         <button onClick={handlePublicar} disabled={loading || !texto.trim()} style={{ width: "100%", background: texto.trim() ? "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)" : COLORS.card, border: "none", borderRadius: 14, padding: 14, color: texto.trim() ? "#fff" : COLORS.muted, fontWeight: 900, fontSize: 15, cursor: texto.trim() ? "pointer" : "default" }}>
           {loading ? "Publicando..." : "Publicar 🔥"}
@@ -142,10 +131,84 @@ function NuevoPost({ user, perfil, onCerrar }) {
   );
 }
 
+function Comentarios({ postId, user, perfil, onCerrar }) {
+  const [comentarios, setComentarios] = useState([]);
+  const [texto, setTexto] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const q = query(collection(db, "posts", postId, "comentarios"), orderBy("createdAt", "asc"));
+    const unsub = onSnapshot(q, snap => {
+      setComentarios(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return unsub;
+  }, [postId]);
+
+  const handleComentar = async () => {
+    if (!texto.trim()) return;
+    setLoading(true);
+    try {
+      await addDoc(collection(db, "posts", postId, "comentarios"), {
+        texto, userId: user.uid,
+        userNombre: perfil.nombre || user.email,
+        userFoto: perfil.foto || null,
+        createdAt: serverTimestamp(),
+      });
+      await setDoc(doc(db, "posts", postId), { comentarios: comentarios.length + 1 }, { merge: true });
+      setTexto("");
+    } catch (e) { console.error(e); }
+    setLoading(false);
+  };
+
+  const formatTime = (ts) => {
+    if (!ts) return "ahora";
+    const d = ts.toDate();
+    const diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60) return "hace " + Math.floor(diff) + "s";
+    if (diff < 3600) return "hace " + Math.floor(diff / 60) + " min";
+    if (diff < 86400) return "hace " + Math.floor(diff / 3600) + " hr";
+    return "hace " + Math.floor(diff / 86400) + " días";
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#000000CC", zIndex: 300, display: "flex", alignItems: "flex-end" }} onClick={onCerrar}>
+      <div style={{ background: COLORS.surface, borderRadius: "24px 24px 0 0", width: "100%", maxHeight: "80vh", display: "flex", flexDirection: "column" }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: "16px 20px", borderBottom: "1px solid " + COLORS.border }}>
+          <div style={{ width: 40, height: 4, background: COLORS.border, borderRadius: 2, margin: "0 auto 16px" }} />
+          <div style={{ color: COLORS.text, fontWeight: 800, fontSize: 16 }}>Comentarios 💬</div>
+        </div>
+
+        <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
+          {comentarios.length === 0 && (
+            <div style={{ textAlign: "center", padding: 30, color: COLORS.muted, fontSize: 14 }}>Sé el primero en comentar 🏍️</div>
+          )}
+          {comentarios.map((c, i) => (
+            <div key={i} style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+              <Avatar foto={c.userFoto} size={36} />
+              <div style={{ flex: 1, background: COLORS.card, borderRadius: 12, padding: "10px 14px" }}>
+                <div style={{ color: COLORS.orange, fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{c.userNombre}</div>
+                <div style={{ color: COLORS.text, fontSize: 14 }}>{c.texto}</div>
+                <div style={{ color: COLORS.muted, fontSize: 11, marginTop: 4 }}>{formatTime(c.createdAt)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ padding: "12px 16px 32px", borderTop: "1px solid " + COLORS.border, display: "flex", gap: 10, alignItems: "center" }}>
+          <Avatar foto={perfil.foto} size={36} />
+          <input value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => e.key === "Enter" && handleComentar()} placeholder="Escribe un comentario..." style={{ flex: 1, background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 20, padding: "10px 16px", color: COLORS.text, fontSize: 14, outline: "none" }} />
+          <button onClick={handleComentar} disabled={loading || !texto.trim()} style={{ width: 40, height: 40, borderRadius: "50%", background: texto.trim() ? COLORS.orange : COLORS.card, border: "none", cursor: "pointer", fontSize: 18, color: "#fff" }}>↑</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Feed({ user, perfil }) {
   const [posts, setPosts] = useState([]);
   const [nuevoPost, setNuevoPost] = useState(false);
   const [liked, setLiked] = useState({});
+  const [verComentarios, setVerComentarios] = useState(null);
 
   useEffect(() => {
     const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
@@ -167,7 +230,6 @@ function Feed({ user, perfil }) {
 
   return (
     <div>
-      {/* Box para nuevo post */}
       <div onClick={() => setNuevoPost(true)} style={{ background: COLORS.card, borderRadius: 14, border: "1px solid " + COLORS.border, padding: 14, marginBottom: 16, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
         <Avatar foto={perfil.foto} size={40} />
         <div style={{ flex: 1, background: COLORS.surface, borderRadius: 20, padding: "10px 16px", color: COLORS.muted, fontSize: 14 }}>¿Qué le pasa a tu moto hoy? 🏍️</div>
@@ -197,16 +259,23 @@ function Feed({ user, perfil }) {
             <p style={{ color: COLORS.text, fontSize: 14, lineHeight: 1.5, margin: 0 }}>{p.texto}</p>
           </div>
           <div style={{ display: "flex", padding: "10px 14px", borderTop: "1px solid " + COLORS.border, gap: 20 }}>
-            <button onClick={async () => { const nuevoLiked = !liked[p.id]; setLiked(l => ({ ...l, [p.id]: nuevoLiked })); await setDoc(doc(db, "posts", p.id), { likes: (p.likes || 0) + (nuevoLiked ? 1 : -1) }, { merge: true }); }} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, color: liked[p.id] ? COLORS.orange : COLORS.muted, fontSize: 13, fontWeight: liked[p.id] ? 700 : 400 }}>
+            <button onClick={async () => {
+              const nuevoLiked = !liked[p.id];
+              setLiked(l => ({ ...l, [p.id]: nuevoLiked }));
+              await setDoc(doc(db, "posts", p.id), { likes: (p.likes || 0) + (nuevoLiked ? 1 : -1) }, { merge: true });
+            }} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, color: liked[p.id] ? COLORS.orange : COLORS.muted, fontSize: 13, fontWeight: liked[p.id] ? 700 : 400 }}>
               🔥 {liked[p.id] ? (p.likes || 0) + 1 : (p.likes || 0)}
             </button>
-            <button style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.muted, fontSize: 13 }}>💬 Comentar</button>
+            <button onClick={() => setVerComentarios(p.id)} style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.muted, fontSize: 13, display: "flex", alignItems: "center", gap: 5 }}>
+              💬 {p.comentarios || 0}
+            </button>
             <button style={{ background: "none", border: "none", cursor: "pointer", marginLeft: "auto", color: COLORS.muted, fontSize: 13 }}>↗ Compartir</button>
           </div>
         </div>
       ))}
 
       {nuevoPost && <NuevoPost user={user} perfil={perfil} onCerrar={() => setNuevoPost(false)} />}
+      {verComentarios && <Comentarios postId={verComentarios} user={user} perfil={perfil} onCerrar={() => setVerComentarios(null)} />}
     </div>
   );
 }
