@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { db, storage } from "./firebase";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const COLORS = {
@@ -20,7 +20,7 @@ const nearbyUsers = [
 
 function Avatar({ foto, size = 48, emoji = "😎" }) {
   if (foto) return (
-    <img src={foto} alt="perfil" style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", border: "2px solid " + COLORS.orange }} />
+    <img src={foto} alt="perfil" style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", border: "2px solid " + COLORS.orange, flexShrink: 0 }} />
   );
   return (
     <div style={{ width: size, height: size, borderRadius: "50%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.45, flexShrink: 0 }}>{emoji}</div>
@@ -48,9 +48,7 @@ function EditarPerfil({ user, perfil, onGuardar, onCancelar }) {
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
       setFoto(url);
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
     setUploadingFoto(false);
   };
 
@@ -60,9 +58,7 @@ function EditarPerfil({ user, perfil, onGuardar, onCancelar }) {
       const data = { nombre, ciudad, marca, modelo, anio, bio, foto, email: user.email, updatedAt: new Date() };
       await setDoc(doc(db, "usuarios", user.uid), data, { merge: true });
       onGuardar(data);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) { console.error(e); }
     setLoading(false);
   };
 
@@ -81,30 +77,20 @@ function EditarPerfil({ user, perfil, onGuardar, onCancelar }) {
         <button onClick={onCancelar} style={{ background: "none", border: "none", color: COLORS.orange, fontSize: 22, cursor: "pointer" }}>←</button>
         <div style={{ color: COLORS.text, fontWeight: 900, fontSize: 20 }}>Editar perfil</div>
       </div>
-
       <div style={{ textAlign: "center", marginBottom: 24 }}>
         <div style={{ position: "relative", display: "inline-block" }}>
           <Avatar foto={foto} size={90} />
-          <button onClick={() => fileRef.current.click()} style={{
-            position: "absolute", bottom: 0, right: 0,
-            width: 30, height: 30, borderRadius: "50%",
-            background: COLORS.orange, border: "2px solid " + COLORS.bg,
-            color: "#fff", fontSize: 14, cursor: "pointer", display: "flex",
-            alignItems: "center", justifyContent: "center"
-          }}>📷</button>
+          <button onClick={() => fileRef.current.click()} style={{ position: "absolute", bottom: 0, right: 0, width: 30, height: 30, borderRadius: "50%", background: COLORS.orange, border: "2px solid " + COLORS.bg, color: "#fff", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>📷</button>
         </div>
         <input ref={fileRef} type="file" accept="image/*" onChange={handleFoto} style={{ display: "none" }} />
-        {uploadingFoto && <div style={{ color: COLORS.muted, fontSize: 12, marginTop: 8 }}>Subiendo foto...</div>}
-        {!uploadingFoto && <div style={{ color: COLORS.muted, fontSize: 12, marginTop: 8 }}>Toca 📷 para cambiar foto</div>}
+        <div style={{ color: COLORS.muted, fontSize: 12, marginTop: 8 }}>{uploadingFoto ? "Subiendo foto..." : "Toca 📷 para cambiar foto"}</div>
       </div>
-
       {campos.map((c, i) => (
         <div key={i} style={{ marginBottom: 16 }}>
           <div style={{ color: COLORS.muted, fontSize: 12, marginBottom: 6, fontWeight: 600 }}>{c.label.toUpperCase()}</div>
           <input value={c.val} onChange={e => c.set(e.target.value)} placeholder={c.placeholder} style={{ width: "100%", background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 12, padding: "12px 16px", color: COLORS.text, fontSize: 14, outline: "none", boxSizing: "border-box" }} />
         </div>
       ))}
-
       <button onClick={handleGuardar} disabled={loading || uploadingFoto} style={{ width: "100%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", border: "none", borderRadius: 14, padding: 16, color: "#fff", fontWeight: 900, fontSize: 16, cursor: "pointer", marginTop: 8 }}>
         {loading ? "Guardando..." : "Guardar perfil 🔥"}
       </button>
@@ -112,8 +98,121 @@ function EditarPerfil({ user, perfil, onGuardar, onCancelar }) {
   );
 }
 
+function NuevoPost({ user, perfil, onCerrar }) {
+  const [texto, setTexto] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handlePublicar = async () => {
+    if (!texto.trim()) return;
+    setLoading(true);
+    try {
+      await addDoc(collection(db, "posts"), {
+        texto,
+        userId: user.uid,
+        userNombre: perfil.nombre || user.email,
+        userFoto: perfil.foto || null,
+        userMoto: perfil.marca ? perfil.marca + " " + perfil.modelo : null,
+        likes: 0,
+        createdAt: serverTimestamp(),
+      });
+      onCerrar();
+    } catch (e) { console.error(e); }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#000000CC", zIndex: 300, display: "flex", alignItems: "flex-end" }} onClick={onCerrar}>
+      <div style={{ background: COLORS.surface, borderRadius: "24px 24px 0 0", width: "100%", padding: 24 }} onClick={e => e.stopPropagation()}>
+        <div style={{ width: 40, height: 4, background: COLORS.border, borderRadius: 2, margin: "0 auto 20px" }} />
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 16 }}>
+          <Avatar foto={perfil.foto} size={44} />
+          <textarea
+            value={texto}
+            onChange={e => setTexto(e.target.value)}
+            placeholder="¿Qué le pasa a tu moto hoy? ¿Salida planeada? 🏍️"
+            autoFocus
+            style={{ flex: 1, background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 12, padding: "12px 16px", color: COLORS.text, fontSize: 14, outline: "none", resize: "none", minHeight: 100, fontFamily: "system-ui, sans-serif" }}
+          />
+        </div>
+        <button onClick={handlePublicar} disabled={loading || !texto.trim()} style={{ width: "100%", background: texto.trim() ? "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)" : COLORS.card, border: "none", borderRadius: 14, padding: 14, color: texto.trim() ? "#fff" : COLORS.muted, fontWeight: 900, fontSize: 15, cursor: texto.trim() ? "pointer" : "default" }}>
+          {loading ? "Publicando..." : "Publicar 🔥"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Feed({ user, perfil }) {
+  const [posts, setPosts] = useState([]);
+  const [nuevoPost, setNuevoPost] = useState(false);
+  const [liked, setLiked] = useState({});
+
+  useEffect(() => {
+    const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+    const unsub = onSnapshot(q, snap => {
+      setPosts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return unsub;
+  }, []);
+
+  const formatTime = (ts) => {
+    if (!ts) return "ahora";
+    const d = ts.toDate();
+    const diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60) return "hace " + Math.floor(diff) + "s";
+    if (diff < 3600) return "hace " + Math.floor(diff / 60) + " min";
+    if (diff < 86400) return "hace " + Math.floor(diff / 3600) + " hr";
+    return "hace " + Math.floor(diff / 86400) + " días";
+  };
+
+  return (
+    <div>
+      {/* Box para nuevo post */}
+      <div onClick={() => setNuevoPost(true)} style={{ background: COLORS.card, borderRadius: 14, border: "1px solid " + COLORS.border, padding: 14, marginBottom: 16, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+        <Avatar foto={perfil.foto} size={40} />
+        <div style={{ flex: 1, background: COLORS.surface, borderRadius: 20, padding: "10px 16px", color: COLORS.muted, fontSize: 14 }}>¿Qué le pasa a tu moto hoy? 🏍️</div>
+      </div>
+
+      {posts.length === 0 && (
+        <div style={{ textAlign: "center", padding: 40 }}>
+          <div style={{ fontSize: 48 }}>🏍️</div>
+          <div style={{ color: COLORS.text, fontWeight: 700, fontSize: 18, marginTop: 12 }}>Sé el primero en publicar</div>
+          <div style={{ color: COLORS.muted, fontSize: 14, marginTop: 8 }}>Comparte algo con la comunidad Radashi</div>
+        </div>
+      )}
+
+      {posts.map(p => (
+        <div key={p.id} style={{ background: COLORS.card, borderRadius: 16, border: "1px solid " + COLORS.border, marginBottom: 12, overflow: "hidden" }}>
+          <div style={{ padding: "14px 14px 10px", display: "flex", alignItems: "center", gap: 10 }}>
+            <Avatar foto={p.userFoto} size={42} />
+            <div style={{ flex: 1 }}>
+              <div style={{ color: COLORS.text, fontWeight: 700, fontSize: 14 }}>{p.userNombre}</div>
+              <div style={{ color: COLORS.muted, fontSize: 12 }}>
+                {p.userMoto && <span>🏍️ {p.userMoto} · </span>}
+                {formatTime(p.createdAt)}
+              </div>
+            </div>
+          </div>
+          <div style={{ padding: "0 14px 12px" }}>
+            <p style={{ color: COLORS.text, fontSize: 14, lineHeight: 1.5, margin: 0 }}>{p.texto}</p>
+          </div>
+          <div style={{ display: "flex", padding: "10px 14px", borderTop: "1px solid " + COLORS.border, gap: 20 }}>
+            <button onClick={() => setLiked(l => ({ ...l, [p.id]: !l[p.id] }))} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, color: liked[p.id] ? COLORS.orange : COLORS.muted, fontSize: 13, fontWeight: liked[p.id] ? 700 : 400 }}>
+              🔥 {liked[p.id] ? (p.likes || 0) + 1 : (p.likes || 0)}
+            </button>
+            <button style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.muted, fontSize: 13 }}>💬 Comentar</button>
+            <button style={{ background: "none", border: "none", cursor: "pointer", marginLeft: "auto", color: COLORS.muted, fontSize: 13 }}>↗ Compartir</button>
+          </div>
+        </div>
+      ))}
+
+      {nuevoPost && <NuevoPost user={user} perfil={perfil} onCerrar={() => setNuevoPost(false)} />}
+    </div>
+  );
+}
+
 export default function RadashiApp({ user, onLogout }) {
-  const [tab, setTab] = useState("cerca");
+  const [tab, setTab] = useState("feed");
   const [connected, setConnected] = useState({ 1: true, 3: true });
   const [selected, setSelected] = useState(null);
   const [toast, setToast] = useState(null);
@@ -204,6 +303,8 @@ export default function RadashiApp({ user, onLogout }) {
       </div>
 
       <div style={{ padding: 16 }}>
+        {tab === "feed" && <Feed user={user} perfil={perfil} />}
+
         {tab === "cerca" && (
           <div>
             <div style={{ color: COLORS.text, fontWeight: 800, fontSize: 20, marginBottom: 16 }}>Radashis cerca 📡</div>
@@ -224,14 +325,6 @@ export default function RadashiApp({ user, onLogout }) {
                 }
               </div>
             ))}
-          </div>
-        )}
-
-        {tab === "feed" && (
-          <div style={{ color: COLORS.text, textAlign: "center", marginTop: 60 }}>
-            <div style={{ fontSize: 60 }}>🏍️</div>
-            <div style={{ fontWeight: 800, fontSize: 22, marginTop: 16 }}>Feed de Radashis</div>
-            <div style={{ color: COLORS.muted, fontSize: 14, marginTop: 8 }}>Próximamente...</div>
           </div>
         )}
 
@@ -256,22 +349,15 @@ export default function RadashiApp({ user, onLogout }) {
               {perfil.bio && <div style={{ color: COLORS.text, fontSize: 14, marginTop: 8, fontStyle: "italic" }}>"{perfil.bio}"</div>}
               <button onClick={() => setEditando(true)} style={{ marginTop: 16, background: COLORS.orangeGlow, border: "1px solid " + COLORS.orange, color: COLORS.orange, borderRadius: 20, padding: "8px 24px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>✏️ Editar perfil</button>
             </div>
-
-            <div style={{ background: COLORS.card, borderRadius: 16, border: "1px solid " + COLORS.border, padding: 16, marginBottom: 12 }}>
+            <div style={{ background: COLORS.card, borderRadius: 16, border: "1px solid " + COLORS.border, padding: 16 }}>
               <div style={{ color: COLORS.text, fontWeight: 800, fontSize: 15, marginBottom: 12 }}>🏍️ Mi moto</div>
-              {[
-                { label: "Marca", val: perfil.marca },
-                { label: "Modelo", val: perfil.modelo },
-                { label: "Año", val: perfil.anio },
-              ].map((f, i) => (
+              {[{ label: "Marca", val: perfil.marca }, { label: "Modelo", val: perfil.modelo }, { label: "Año", val: perfil.anio }].map((f, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: i < 2 ? "1px solid " + COLORS.border : "none" }}>
                   <span style={{ color: COLORS.muted, fontSize: 13 }}>{f.label}</span>
                   <span style={{ color: f.val ? COLORS.orange : COLORS.muted, fontSize: 13, fontWeight: f.val ? 600 : 400 }}>{f.val || "Sin registrar"}</span>
                 </div>
               ))}
-              {!perfil.marca && (
-                <button onClick={() => setEditando(true)} style={{ width: "100%", marginTop: 12, background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", border: "none", borderRadius: 12, padding: 10, color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>+ Registrar mi moto</button>
-              )}
+              {!perfil.marca && <button onClick={() => setEditando(true)} style={{ width: "100%", marginTop: 12, background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", border: "none", borderRadius: 12, padding: 10, color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>+ Registrar mi moto</button>}
             </div>
           </div>
         )}
