@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { db } from "./firebase";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 
 const COLORS = {
   bg: "#0A0A0A", surface: "#141414", card: "#1A1A1A",
@@ -8,45 +10,100 @@ const COLORS = {
 };
 
 const nearbyUsers = [
-  { id: 1, name: "TonoMotos", city: "Cuautitlán", km: 2, avatar: "🏍️", clan: true, moto: "Honda CB500F 2022", bio: "Fanático del mantenimiento preventivo. Salidas los fines.", posts: 34, conexiones: 12 },
-  { id: 2, name: "Fer_Rueda", city: "Tlalnepantla", km: 5, avatar: "🔩", clan: false, moto: "Yamaha MT-03 2021", bio: "Aprendiendo mecánica con el Clan. Siempre listo pa rodar.", posts: 8, conexiones: 5 },
+  { id: 1, name: "TonoMotos", city: "Cuautitlán", km: 2, avatar: "🏍️", clan: true, moto: "Honda CB500F 2022", bio: "Fanático del mantenimiento preventivo.", posts: 34, conexiones: 12 },
+  { id: 2, name: "Fer_Rueda", city: "Tlalnepantla", km: 5, avatar: "🔩", clan: false, moto: "Yamaha MT-03 2021", bio: "Aprendiendo mecánica con el Clan.", posts: 8, conexiones: 5 },
   { id: 3, name: "Xochitl_Z", city: "Naucalpan", km: 8, avatar: "⚡", clan: true, moto: "Kawasaki Z400 2023", bio: "Primera moto este año. El Clan me salvó la vida.", posts: 21, conexiones: 9 },
   { id: 4, name: "Beto_Piston", city: "Ecatepec", km: 11, avatar: "🔧", clan: false, moto: "Italika 250Z 2020", bio: "Mecánico de hobby. Le entro a todo.", posts: 45, conexiones: 20 },
-  { id: 5, name: "Diana_Moto", city: "Tultitlán", km: 14, avatar: "🌟", clan: true, moto: "Bajaj Dominar 400 2022", bio: "Viajes largos y carretera. Radashi desde siempre.", posts: 60, conexiones: 31 },
+  { id: 5, name: "Diana_Moto", city: "Tultitlán", km: 14, avatar: "🌟", clan: true, moto: "Bajaj Dominar 400 2022", bio: "Viajes largos y carretera.", posts: 60, conexiones: 31 },
 ];
 
-export default function RadashiApp() {
+function EditarPerfil({ user, perfil, onGuardar, onCancelar }) {
+  const [nombre, setNombre] = useState(perfil.nombre || "");
+  const [ciudad, setCiudad] = useState(perfil.ciudad || "");
+  const [marca, setMarca] = useState(perfil.marca || "");
+  const [modelo, setModelo] = useState(perfil.modelo || "");
+  const [anio, setAnio] = useState(perfil.anio || "");
+  const [bio, setBio] = useState(perfil.bio || "");
+  const [loading, setLoading] = useState(false);
+
+  const handleGuardar = async () => {
+    setLoading(true);
+    try {
+      const data = { nombre, ciudad, marca, modelo, anio, bio, email: user.email, updatedAt: new Date() };
+      await setDoc(doc(db, "usuarios", user.uid), data, { merge: true });
+      onGuardar(data);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  const campos = [
+    { label: "Tu nombre", val: nombre, set: setNombre, placeholder: "Ej: Miguel Radashi" },
+    { label: "Ciudad", val: ciudad, set: setCiudad, placeholder: "Ej: Cuautitlán Izcalli" },
+    { label: "Marca de tu moto", val: marca, set: setMarca, placeholder: "Ej: Honda, Yamaha..." },
+    { label: "Modelo", val: modelo, set: setModelo, placeholder: "Ej: CB500F, MT-03..." },
+    { label: "Año", val: anio, set: setAnio, placeholder: "Ej: 2022" },
+    { label: "Tu bio", val: bio, set: setBio, placeholder: "Cuéntanos de ti y tu moto..." },
+  ];
+
+  return (
+    <div style={{ background: COLORS.bg, minHeight: "100vh", fontFamily: "system-ui, sans-serif", padding: 20, paddingBottom: 100 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+        <button onClick={onCancelar} style={{ background: "none", border: "none", color: COLORS.orange, fontSize: 22, cursor: "pointer" }}>←</button>
+        <div style={{ color: COLORS.text, fontWeight: 900, fontSize: 20 }}>Editar perfil</div>
+      </div>
+
+      <div style={{ width: 80, height: 80, borderRadius: "50%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, margin: "0 auto 24px" }}>😎</div>
+
+      {campos.map((c, i) => (
+        <div key={i} style={{ marginBottom: 16 }}>
+          <div style={{ color: COLORS.muted, fontSize: 12, marginBottom: 6, fontWeight: 600 }}>{c.label.toUpperCase()}</div>
+          <input value={c.val} onChange={e => c.set(e.target.value)} placeholder={c.placeholder} style={{ width: "100%", background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 12, padding: "12px 16px", color: COLORS.text, fontSize: 14, outline: "none", boxSizing: "border-box" }} />
+        </div>
+      ))}
+
+      <button onClick={handleGuardar} disabled={loading} style={{ width: "100%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", border: "none", borderRadius: 14, padding: 16, color: "#fff", fontWeight: 900, fontSize: 16, cursor: "pointer", marginTop: 8 }}>
+        {loading ? "Guardando..." : "Guardar perfil 🔥"}
+      </button>
+    </div>
+  );
+}
+
+export default function RadashiApp({ user, onLogout }) {
   const [tab, setTab] = useState("cerca");
   const [connected, setConnected] = useState({ 1: true, 3: true });
   const [selected, setSelected] = useState(null);
   const [toast, setToast] = useState(null);
   const [chatUser, setChatUser] = useState(null);
+  const [editando, setEditando] = useState(false);
+  const [perfil, setPerfil] = useState({});
   const [chats, setChats] = useState({
-    1: [
-      { from: "them", text: "Hey! Vi que estás en Cuautitlán también", time: "10:14" },
-      { from: "me", text: "Sí! Tienes CB500 verdad? Muy buena moto", time: "10:16" },
-    ],
-    3: [
-      { from: "them", text: "Hola! Vi que también eres del Clan", time: "ayer" },
-      { from: "me", text: "Sí! Ya viste la clase de frenos?", time: "ayer" },
-    ],
+    1: [{ from: "them", text: "Hey! Vi que estás en Cuautitlán también", time: "10:14" }, { from: "me", text: "Sí! Tienes CB500 verdad?", time: "10:16" }],
+    3: [{ from: "them", text: "Hola! Vi que también eres del Clan", time: "ayer" }, { from: "me", text: "Sí! Ya viste la clase de frenos?", time: "ayer" }],
   });
   const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    if (user) {
+      getDoc(doc(db, "usuarios", user.uid)).then(snap => {
+        if (snap.exists()) setPerfil(snap.data());
+      });
+    }
+  }, [user]);
+
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
   const handleConnect = (id) => {
     setConnected(c => ({ ...c, [id]: true }));
     const u = nearbyUsers.find(u => u.id === id);
-    setToast("Conectado con " + u.name + "! 🤝");
-    setTimeout(() => setToast(null), 3000);
+    showToast("Conectado con " + u.name + "! 🤝");
     setSelected(null);
   };
 
   const handleSend = () => {
     if (!msg.trim() || !chatUser) return;
-    setChats(c => ({
-      ...c,
-      [chatUser.id]: [...(c[chatUser.id] || []), { from: "me", text: msg, time: "ahora" }],
-    }));
+    setChats(c => ({ ...c, [chatUser.id]: [...(c[chatUser.id] || []), { from: "me", text: msg, time: "ahora" }] }));
     setMsg("");
   };
 
@@ -56,6 +113,8 @@ export default function RadashiApp() {
     { id: "clan", icon: "⭐", label: "Clan" },
     { id: "perfil", icon: "👤", label: "Mi Moto" },
   ];
+
+  if (editando) return <EditarPerfil user={user} perfil={perfil} onGuardar={(data) => { setPerfil(data); setEditando(false); showToast("Perfil guardado! 🔥"); }} onCancelar={() => setEditando(false)} />;
 
   if (chatUser) {
     return (
@@ -72,8 +131,7 @@ export default function RadashiApp() {
           {(chats[chatUser.id] || []).map((m, i) => (
             <div key={i} style={{ display: "flex", justifyContent: m.from === "me" ? "flex-end" : "flex-start" }}>
               <div style={{ background: m.from === "me" ? COLORS.orange : COLORS.card, color: "#fff", padding: "10px 14px", borderRadius: 18, maxWidth: "75%", fontSize: 14 }}>
-                {m.text}
-                <div style={{ fontSize: 10, opacity: 0.6, marginTop: 4 }}>{m.time}</div>
+                {m.text}<div style={{ fontSize: 10, opacity: 0.6, marginTop: 4 }}>{m.time}</div>
               </div>
             </div>
           ))}
@@ -88,21 +146,21 @@ export default function RadashiApp() {
 
   return (
     <div style={{ background: COLORS.bg, minHeight: "100vh", fontFamily: "system-ui, sans-serif", paddingBottom: 80 }}>
-      {toast && (
-        <div style={{ position: "fixed", top: 80, left: "50%", transform: "translateX(-50%)", background: COLORS.green, color: "#fff", padding: "10px 20px", borderRadius: 20, fontWeight: 700, fontSize: 14, zIndex: 500 }}>{toast}</div>
-      )}
+      {toast && <div style={{ position: "fixed", top: 80, left: "50%", transform: "translateX(-50%)", background: COLORS.green, color: "#fff", padding: "10px 20px", borderRadius: 20, fontWeight: 700, fontSize: 14, zIndex: 500 }}>{toast}</div>}
+
       <div style={{ background: COLORS.surface, borderBottom: "1px solid " + COLORS.border, padding: "16px 20px 12px", position: "sticky", top: 0, zIndex: 100 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>⚙️</div>
             <div>
               <div style={{ color: COLORS.orange, fontWeight: 900, fontSize: 16, letterSpacing: 1 }}>ZONA RADASHI</div>
-              <div style={{ color: COLORS.muted, fontSize: 11 }}>Comunidad Radashi</div>
+              <div style={{ color: COLORS.muted, fontSize: 11 }}>{perfil.nombre || user?.email}</div>
             </div>
           </div>
-          <button style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer" }}>🔔</button>
+          <button onClick={onLogout} style={{ background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 20, padding: "6px 14px", color: COLORS.muted, fontSize: 12, cursor: "pointer" }}>Salir</button>
         </div>
       </div>
+
       <div style={{ padding: 16 }}>
         {tab === "cerca" && (
           <div>
@@ -126,6 +184,7 @@ export default function RadashiApp() {
             ))}
           </div>
         )}
+
         {tab === "feed" && (
           <div style={{ color: COLORS.text, textAlign: "center", marginTop: 60 }}>
             <div style={{ fontSize: 60 }}>🏍️</div>
@@ -133,6 +192,7 @@ export default function RadashiApp() {
             <div style={{ color: COLORS.muted, fontSize: 14, marginTop: 8 }}>Próximamente...</div>
           </div>
         )}
+
         {tab === "clan" && (
           <div>
             <div style={{ background: "linear-gradient(135deg, #1A1000, #2A1800)", border: "1px solid " + COLORS.gold + "44", borderRadius: 18, padding: 20, marginBottom: 16 }}>
@@ -143,15 +203,47 @@ export default function RadashiApp() {
             </div>
           </div>
         )}
+
         {tab === "perfil" && (
-          <div style={{ textAlign: "center", paddingTop: 20 }}>
-            <div style={{ width: 70, height: 70, borderRadius: "50%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, margin: "0 auto" }}>😎</div>
-            <div style={{ color: COLORS.text, fontWeight: 900, fontSize: 20, marginTop: 12 }}>Tu perfil</div>
-            <div style={{ color: COLORS.muted, fontSize: 13 }}>@radashi_user</div>
-            <div style={{ color: COLORS.orange, marginTop: 8, fontWeight: 700 }}>{Object.keys(connected).length} conexiones activas 🤝</div>
+          <div>
+            <div style={{ background: COLORS.card, borderRadius: 18, border: "1px solid " + COLORS.border, padding: 20, marginBottom: 16, textAlign: "center" }}>
+              <div style={{ width: 80, height: 80, borderRadius: "50%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, margin: "0 auto 12px" }}>😎</div>
+              <div style={{ color: COLORS.text, fontWeight: 900, fontSize: 22 }}>{perfil.nombre || "Sin nombre"}</div>
+              <div style={{ color: COLORS.muted, fontSize: 13, marginBottom: 4 }}>{user?.email}</div>
+              {perfil.ciudad && <div style={{ color: COLORS.muted, fontSize: 13 }}>📍 {perfil.ciudad}</div>}
+              {perfil.bio && <div style={{ color: COLORS.text, fontSize: 14, marginTop: 8, fontStyle: "italic" }}>"{perfil.bio}"</div>}
+              <button onClick={() => setEditando(true)} style={{ marginTop: 16, background: COLORS.orangeGlow, border: "1px solid " + COLORS.orange, color: COLORS.orange, borderRadius: 20, padding: "8px 24px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>✏️ Editar perfil</button>
+            </div>
+
+            <div style={{ background: COLORS.card, borderRadius: 16, border: "1px solid " + COLORS.border, padding: 16, marginBottom: 12 }}>
+              <div style={{ color: COLORS.text, fontWeight: 800, fontSize: 15, marginBottom: 12 }}>🏍️ Mi moto</div>
+              {[
+                { label: "Marca", val: perfil.marca },
+                { label: "Modelo", val: perfil.modelo },
+                { label: "Año", val: perfil.anio },
+              ].map((f, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: i < 2 ? "1px solid " + COLORS.border : "none" }}>
+                  <span style={{ color: COLORS.muted, fontSize: 13 }}>{f.label}</span>
+                  <span style={{ color: f.val ? COLORS.orange : COLORS.muted, fontSize: 13, fontWeight: f.val ? 600 : 400 }}>{f.val || "Sin registrar"}</span>
+                </div>
+              ))}
+              {!perfil.marca && (
+                <button onClick={() => setEditando(true)} style={{ width: "100%", marginTop: 12, background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", border: "none", borderRadius: 12, padding: 10, color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>+ Registrar mi moto</button>
+              )}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {[{ val: Object.keys(connected).length, label: "Conexiones" }, { val: perfil.nombre ? "✓" : "✗", label: "Perfil completo" }].map((s, i) => (
+                <div key={i} style={{ background: COLORS.card, borderRadius: 14, border: "1px solid " + COLORS.border, padding: 14, textAlign: "center" }}>
+                  <div style={{ color: COLORS.orange, fontWeight: 900, fontSize: 22 }}>{s.val}</div>
+                  <div style={{ color: COLORS.muted, fontSize: 12 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
+
       {selected && (
         <div style={{ position: "fixed", inset: 0, background: "#000000CC", zIndex: 200, display: "flex", alignItems: "flex-end" }} onClick={() => setSelected(null)}>
           <div style={{ background: COLORS.surface, borderRadius: "24px 24px 0 0", width: "100%", padding: 24 }} onClick={e => e.stopPropagation()}>
@@ -172,6 +264,7 @@ export default function RadashiApp() {
           </div>
         </div>
       )}
+
       <div style={{ position: "fixed", bottom: 0, width: "100%", background: COLORS.surface, borderTop: "1px solid " + COLORS.border, display: "flex", padding: "10px 0 20px" }}>
         {tabs.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
