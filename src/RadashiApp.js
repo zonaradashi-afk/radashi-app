@@ -197,7 +197,7 @@ function Feed({ user, perfil }) {
             <p style={{ color: COLORS.text, fontSize: 14, lineHeight: 1.5, margin: 0 }}>{p.texto}</p>
           </div>
           <div style={{ display: "flex", padding: "10px 14px", borderTop: "1px solid " + COLORS.border, gap: 20 }}>
-            <button onClick={() => setLiked(l => ({ ...l, [p.id]: !l[p.id] }))} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, color: liked[p.id] ? COLORS.orange : COLORS.muted, fontSize: 13, fontWeight: liked[p.id] ? 700 : 400 }}>
+            <button onClick={async () => { const nuevoLiked = !liked[p.id]; setLiked(l => ({ ...l, [p.id]: nuevoLiked })); await setDoc(doc(db, "posts", p.id), { likes: (p.likes || 0) + (nuevoLiked ? 1 : -1) }, { merge: true }); }} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, color: liked[p.id] ? COLORS.orange : COLORS.muted, fontSize: 13, fontWeight: liked[p.id] ? 700 : 400 }}>
               🔥 {liked[p.id] ? (p.likes || 0) + 1 : (p.likes || 0)}
             </button>
             <button style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.muted, fontSize: 13 }}>💬 Comentar</button>
