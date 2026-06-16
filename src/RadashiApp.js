@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { db } from "./firebase";
+import React, { useState, useEffect, useRef } from "react";
+import { db, storage } from "./firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const COLORS = {
   bg: "#0A0A0A", surface: "#141414", card: "#1A1A1A",
@@ -17,6 +18,15 @@ const nearbyUsers = [
   { id: 5, name: "Diana_Moto", city: "Tultitlán", km: 14, avatar: "🌟", clan: true, moto: "Bajaj Dominar 400 2022", bio: "Viajes largos y carretera.", posts: 60, conexiones: 31 },
 ];
 
+function Avatar({ foto, size = 48, emoji = "😎" }) {
+  if (foto) return (
+    <img src={foto} alt="perfil" style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", border: "2px solid " + COLORS.orange }} />
+  );
+  return (
+    <div style={{ width: size, height: size, borderRadius: "50%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.45, flexShrink: 0 }}>{emoji}</div>
+  );
+}
+
 function EditarPerfil({ user, perfil, onGuardar, onCancelar }) {
   const [nombre, setNombre] = useState(perfil.nombre || "");
   const [ciudad, setCiudad] = useState(perfil.ciudad || "");
@@ -24,12 +34,30 @@ function EditarPerfil({ user, perfil, onGuardar, onCancelar }) {
   const [modelo, setModelo] = useState(perfil.modelo || "");
   const [anio, setAnio] = useState(perfil.anio || "");
   const [bio, setBio] = useState(perfil.bio || "");
+  const [foto, setFoto] = useState(perfil.foto || null);
   const [loading, setLoading] = useState(false);
+  const [uploadingFoto, setUploadingFoto] = useState(false);
+  const fileRef = useRef();
+
+  const handleFoto = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingFoto(true);
+    try {
+      const storageRef = ref(storage, "fotos/" + user.uid + "/perfil.jpg");
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      setFoto(url);
+    } catch (err) {
+      console.error(err);
+    }
+    setUploadingFoto(false);
+  };
 
   const handleGuardar = async () => {
     setLoading(true);
     try {
-      const data = { nombre, ciudad, marca, modelo, anio, bio, email: user.email, updatedAt: new Date() };
+      const data = { nombre, ciudad, marca, modelo, anio, bio, foto, email: user.email, updatedAt: new Date() };
       await setDoc(doc(db, "usuarios", user.uid), data, { merge: true });
       onGuardar(data);
     } catch (e) {
@@ -54,7 +82,21 @@ function EditarPerfil({ user, perfil, onGuardar, onCancelar }) {
         <div style={{ color: COLORS.text, fontWeight: 900, fontSize: 20 }}>Editar perfil</div>
       </div>
 
-      <div style={{ width: 80, height: 80, borderRadius: "50%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, margin: "0 auto 24px" }}>😎</div>
+      <div style={{ textAlign: "center", marginBottom: 24 }}>
+        <div style={{ position: "relative", display: "inline-block" }}>
+          <Avatar foto={foto} size={90} />
+          <button onClick={() => fileRef.current.click()} style={{
+            position: "absolute", bottom: 0, right: 0,
+            width: 30, height: 30, borderRadius: "50%",
+            background: COLORS.orange, border: "2px solid " + COLORS.bg,
+            color: "#fff", fontSize: 14, cursor: "pointer", display: "flex",
+            alignItems: "center", justifyContent: "center"
+          }}>📷</button>
+        </div>
+        <input ref={fileRef} type="file" accept="image/*" onChange={handleFoto} style={{ display: "none" }} />
+        {uploadingFoto && <div style={{ color: COLORS.muted, fontSize: 12, marginTop: 8 }}>Subiendo foto...</div>}
+        {!uploadingFoto && <div style={{ color: COLORS.muted, fontSize: 12, marginTop: 8 }}>Toca 📷 para cambiar foto</div>}
+      </div>
 
       {campos.map((c, i) => (
         <div key={i} style={{ marginBottom: 16 }}>
@@ -63,7 +105,7 @@ function EditarPerfil({ user, perfil, onGuardar, onCancelar }) {
         </div>
       ))}
 
-      <button onClick={handleGuardar} disabled={loading} style={{ width: "100%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", border: "none", borderRadius: 14, padding: 16, color: "#fff", fontWeight: 900, fontSize: 16, cursor: "pointer", marginTop: 8 }}>
+      <button onClick={handleGuardar} disabled={loading || uploadingFoto} style={{ width: "100%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", border: "none", borderRadius: 14, padding: 16, color: "#fff", fontWeight: 900, fontSize: 16, cursor: "pointer", marginTop: 8 }}>
         {loading ? "Guardando..." : "Guardar perfil 🔥"}
       </button>
     </div>
@@ -92,7 +134,7 @@ export default function RadashiApp({ user, onLogout }) {
     }
   }, [user]);
 
-  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
+  const showToast = (m) => { setToast(m); setTimeout(() => setToast(null), 3000); };
 
   const handleConnect = (id) => {
     setConnected(c => ({ ...c, [id]: true }));
@@ -121,7 +163,7 @@ export default function RadashiApp({ user, onLogout }) {
       <div style={{ background: COLORS.bg, minHeight: "100vh", fontFamily: "system-ui, sans-serif", display: "flex", flexDirection: "column" }}>
         <div style={{ background: COLORS.surface, padding: "16px", borderBottom: "1px solid " + COLORS.border, display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={() => setChatUser(null)} style={{ background: "none", border: "none", color: COLORS.orange, fontSize: 22, cursor: "pointer" }}>←</button>
-          <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>{chatUser.avatar}</div>
+          <Avatar emoji={chatUser.avatar} size={40} />
           <div>
             <div style={{ color: COLORS.text, fontWeight: 700 }}>{chatUser.name}</div>
             <div style={{ color: COLORS.green, fontSize: 12 }}>● En línea</div>
@@ -151,7 +193,7 @@ export default function RadashiApp({ user, onLogout }) {
       <div style={{ background: COLORS.surface, borderBottom: "1px solid " + COLORS.border, padding: "16px 20px 12px", position: "sticky", top: 0, zIndex: 100 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>⚙️</div>
+            <Avatar foto={perfil.foto} size={36} />
             <div>
               <div style={{ color: COLORS.orange, fontWeight: 900, fontSize: 16, letterSpacing: 1 }}>ZONA RADASHI</div>
               <div style={{ color: COLORS.muted, fontSize: 11 }}>{perfil.nombre || user?.email}</div>
@@ -167,7 +209,7 @@ export default function RadashiApp({ user, onLogout }) {
             <div style={{ color: COLORS.text, fontWeight: 800, fontSize: 20, marginBottom: 16 }}>Radashis cerca 📡</div>
             {nearbyUsers.map(u => (
               <div key={u.id} onClick={() => setSelected(u)} style={{ background: COLORS.card, borderRadius: 14, border: "1px solid " + (connected[u.id] ? COLORS.green + "55" : COLORS.border), padding: 14, marginBottom: 10, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
-                <div style={{ width: 48, height: 48, borderRadius: "50%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{u.avatar}</div>
+                <Avatar emoji={u.avatar} size={48} />
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <span style={{ color: COLORS.text, fontWeight: 700, fontSize: 15 }}>{u.name}</span>
@@ -207,8 +249,8 @@ export default function RadashiApp({ user, onLogout }) {
         {tab === "perfil" && (
           <div>
             <div style={{ background: COLORS.card, borderRadius: 18, border: "1px solid " + COLORS.border, padding: 20, marginBottom: 16, textAlign: "center" }}>
-              <div style={{ width: 80, height: 80, borderRadius: "50%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, margin: "0 auto 12px" }}>😎</div>
-              <div style={{ color: COLORS.text, fontWeight: 900, fontSize: 22 }}>{perfil.nombre || "Sin nombre"}</div>
+              <Avatar foto={perfil.foto} size={90} />
+              <div style={{ color: COLORS.text, fontWeight: 900, fontSize: 22, marginTop: 12 }}>{perfil.nombre || "Sin nombre"}</div>
               <div style={{ color: COLORS.muted, fontSize: 13, marginBottom: 4 }}>{user?.email}</div>
               {perfil.ciudad && <div style={{ color: COLORS.muted, fontSize: 13 }}>📍 {perfil.ciudad}</div>}
               {perfil.bio && <div style={{ color: COLORS.text, fontSize: 14, marginTop: 8, fontStyle: "italic" }}>"{perfil.bio}"</div>}
@@ -231,15 +273,6 @@ export default function RadashiApp({ user, onLogout }) {
                 <button onClick={() => setEditando(true)} style={{ width: "100%", marginTop: 12, background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", border: "none", borderRadius: 12, padding: 10, color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>+ Registrar mi moto</button>
               )}
             </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              {[{ val: Object.keys(connected).length, label: "Conexiones" }, { val: perfil.nombre ? "✓" : "✗", label: "Perfil completo" }].map((s, i) => (
-                <div key={i} style={{ background: COLORS.card, borderRadius: 14, border: "1px solid " + COLORS.border, padding: 14, textAlign: "center" }}>
-                  <div style={{ color: COLORS.orange, fontWeight: 900, fontSize: 22 }}>{s.val}</div>
-                  <div style={{ color: COLORS.muted, fontSize: 12 }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
           </div>
         )}
       </div>
@@ -249,7 +282,7 @@ export default function RadashiApp({ user, onLogout }) {
           <div style={{ background: COLORS.surface, borderRadius: "24px 24px 0 0", width: "100%", padding: 24 }} onClick={e => e.stopPropagation()}>
             <div style={{ width: 40, height: 4, background: COLORS.border, borderRadius: 2, margin: "0 auto 20px" }} />
             <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 16 }}>
-              <div style={{ width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30 }}>{selected.avatar}</div>
+              <Avatar emoji={selected.avatar} size={64} />
               <div>
                 <div style={{ color: COLORS.text, fontWeight: 900, fontSize: 20 }}>{selected.name}</div>
                 <div style={{ color: COLORS.muted, fontSize: 13 }}>📍 {selected.city} · {selected.km} km</div>
