@@ -72,12 +72,11 @@ export default function MiMoto({ user }) {
 
   // Cálculo próximo servicio
   const kmActuales = parseFloat(datos.kmActuales) || 0;
-  const kmUltimo = parseFloat(datos.kmUltimoServicio) || 0;
   const intervalo = parseFloat(datos.intervaloServicio) || 0;
-  const kmProximo = kmUltimo + intervalo;
-  const kmFaltantes = kmProximo - kmActuales;
-  const servicioVencido = kmProximo > 0 && kmFaltantes <= 0;
-  const servicioPronto = kmProximo > 0 && kmFaltantes > 0 && kmFaltantes <= 500;
+  const kmProximo = kmActuales + intervalo;
+  const kmFaltantes = intervalo;
+  const servicioVencido = false;
+  const servicioPronto = intervalo > 0 && intervalo <= 500;
 
   // Cálculo rendimiento
   const km1 = parseFloat(datos.km1) || 0;
@@ -134,13 +133,19 @@ export default function MiMoto({ user }) {
       {tab === "servicio" && (
         <div>
           <Seccion titulo="🔧 Control de servicio">
-            <Campo label="Km del último servicio" valor={datos.kmUltimoServicio} onChange={set("kmUltimoServicio")} placeholder="12000" tipo="number" suffix="km" />
-            <Campo label="Intervalo de servicio" valor={datos.intervaloServicio} onChange={set("intervaloServicio")} placeholder="3000" tipo="number" suffix="km" />
-            <Campo label="Kilometraje actual" valor={datos.kmActuales} onChange={set("kmActuales")} placeholder="15000" tipo="number" suffix="km" />
+            <Campo label="Kilometraje actual" valor={datos.kmActuales} onChange={set("kmActuales")} placeholder="33000" tipo="number" suffix="km" />
+            <Campo label="Intervalo de servicio (cada cuántos km)" valor={datos.intervaloServicio} onChange={set("intervaloServicio")} placeholder="5000" tipo="number" suffix="km" />
+            {kmActuales > 0 && intervalo > 0 && (
+              <div style={{ background: COLORS.surface, borderRadius: 10, padding: "12px 14px", marginTop: 4 }}>
+                <div style={{ color: COLORS.muted, fontSize: 11, marginBottom: 4, fontWeight: 600 }}>PRÓXIMO SERVICIO</div>
+                <div style={{ color: COLORS.orange, fontWeight: 900, fontSize: 22 }}>{kmProximo.toLocaleString()} km</div>
+                <div style={{ color: COLORS.muted, fontSize: 12, marginTop: 2 }}>{kmActuales.toLocaleString()} + {intervalo.toLocaleString()} = {kmProximo.toLocaleString()} km</div>
+              </div>
+            )}
           </Seccion>
 
           {/* Resultado próximo servicio */}
-          {kmUltimo > 0 && intervalo > 0 && kmActuales > 0 && (
+          {kmActuales > 0 && intervalo > 0 && (
             <div style={{
               background: servicioVencido ? "#2A0000" : servicioPronto ? "#2A1A00" : "#001A00",
               border: "1px solid " + (servicioVencido ? COLORS.red : servicioPronto ? COLORS.gold : COLORS.green),
