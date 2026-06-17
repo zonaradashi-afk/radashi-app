@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { db, storage } from "./firebase";
-import { doc, setDoc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, where } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import MiMoto from "./MiMoto";
 
@@ -8,16 +8,38 @@ const COLORS = {
   bg: "#0A0A0A", surface: "#141414", card: "#1A1A1A",
   orange: "#FF6B00", orangeGlow: "#FF6B0022", gold: "#FFB800",
   text: "#F0F0F0", muted: "#888", border: "#2A2A2A",
-  green: "#22C55E", greenGlow: "#22C55E22",
+  green: "#22C55E", greenGlow: "#22C55E22", red: "#EF4444",
 };
 
 const nearbyUsers = [
-  { id: 1, name: "TonoMotos", city: "Cuautitlán", km: 2, avatar: "🏍️", clan: true, moto: "Honda CB500F 2022", bio: "Fanático del mantenimiento preventivo.", posts: 34, conexiones: 12 },
-  { id: 2, name: "Fer_Rueda", city: "Tlalnepantla", km: 5, avatar: "🔩", clan: false, moto: "Yamaha MT-03 2021", bio: "Aprendiendo mecánica con el Clan.", posts: 8, conexiones: 5 },
-  { id: 3, name: "Xochitl_Z", city: "Naucalpan", km: 8, avatar: "⚡", clan: true, moto: "Kawasaki Z400 2023", bio: "Primera moto este año. El Clan me salvó la vida.", posts: 21, conexiones: 9 },
-  { id: 4, name: "Beto_Piston", city: "Ecatepec", km: 11, avatar: "🔧", clan: false, moto: "Italika 250Z 2020", bio: "Mecánico de hobby. Le entro a todo.", posts: 45, conexiones: 20 },
-  { id: 5, name: "Diana_Moto", city: "Tultitlán", km: 14, avatar: "🌟", clan: true, moto: "Bajaj Dominar 400 2022", bio: "Viajes largos y carretera.", posts: 60, conexiones: 31 },
+  { id: 1, name: "TonoMotos", zona: "Cuautitlán", km: 2, avatar: "🏍️", clan: true, moto: "Honda CB500F 2022", bio: "Fanático del mantenimiento preventivo." },
+  { id: 2, name: "Fer_Rueda", zona: "Tlalnepantla", km: 5, avatar: "🔩", clan: false, moto: "Yamaha MT-03 2021", bio: "Aprendiendo mecánica con el Clan." },
+  { id: 3, name: "Xochitl_Z", zona: "Naucalpan", km: 8, avatar: "⚡", clan: true, moto: "Kawasaki Z400 2023", bio: "Primera moto este año. El Clan me salvó la vida." },
+  { id: 4, name: "Beto_Piston", zona: "Ecatepec", km: 11, avatar: "🔧", clan: false, moto: "Italika 250Z 2020", bio: "Mecánico de hobby. Le entro a todo." },
+  { id: 5, name: "Diana_Moto", zona: "Tultitlán", km: 14, avatar: "🌟", clan: true, moto: "Bajaj Dominar 400 2022", bio: "Viajes largos y carretera." },
 ];
+
+const puntosUtiles = [
+  { id: 1, tipo: "Taller", icon: "🔧", nombre: "Taller Zona Radashi", zona: "Cuautitlán Izcalli", desc: "Taller oficial de la comunidad", aliado: true },
+  { id: 2, tipo: "Gasolina", icon: "⛽", nombre: "Pemex Cuautitlán", zona: "Cuautitlán", desc: "24 horas, abierta toda la semana" },
+  { id: 3, tipo: "Vulcanizadora", icon: "🛞", nombre: "Vulca-Moto", zona: "Tlalnepantla", desc: "Especialistas en motos, rápido y barato" },
+  { id: 4, tipo: "Refaccionaria", icon: "⚙️", nombre: "Refacciones El Pistón", zona: "Naucalpan", desc: "Todo tipo de refacciones para moto" },
+  { id: 5, tipo: "Punto de reunión", icon: "📍", nombre: "Glorieta de los Moteros", zona: "Cuautitlán Izcalli", desc: "Punto de encuentro cada domingo 8am" },
+  { id: 6, tipo: "Evento", icon: "🏁", nombre: "Rodada Mensual Radashi", zona: "CDMX", desc: "Primer sábado de cada mes" },
+  { id: 7, tipo: "Aliado Radashi", icon: "⭐", nombre: "Moto Accesorios MX", zona: "Ecatepec", desc: "10% descuento con código RADASHI" },
+  { id: 8, tipo: "Gasolina", icon: "⛽", nombre: "Pemex Tultitlán", zona: "Tultitlán", desc: "Cerca de la autopista, fácil acceso" },
+];
+
+const emergencias = [
+  { id: "ponche", icon: "🛞", label: "Me ponché", guia: ["Busca un lugar seguro fuera del carril", "Enciende las luces de emergencia", "Coloca la moto sobre el caballete", "Busca una vulcanizadora cercana en Puntos Útiles", "Si estás en carretera, llama a grúa"] },
+  { id: "noprende", icon: "🔑", label: "No prende", guia: ["Verifica que el switch esté en ON", "Revisa si tiene gasolina", "Revisa el caballete lateral (algunos cortan el motor)", "Intenta arrancar en neutro", "Si nada funciona, llama a un mecánico"] },
+  { id: "singasolina", icon: "⛽", label: "Sin gasolina", guia: ["Busca una gasolinera en Puntos Útiles", "Si estás varado, empuja la moto al acotamiento", "Avisa a alguien de tu ubicación", "Muchas gasolineras venden combustible en contenedor"] },
+  { id: "accidente", icon: "🚨", label: "Tuve un accidente", guia: ["Tu seguridad primero — no muevas la moto si hay riesgo", "Llama al 911 si hay heridos", "Toma fotos del lugar y daños", "No admitas culpa en el momento", "Llama a tu aseguradora", "Avisa a un familiar tu ubicación"] },
+  { id: "grua", icon: "🚛", label: "Necesito grúa", guia: ["Llama a tu aseguradora primero (muchas incluyen grúa)", "Grúa de emergencia CDMX: 55 5684-1111", "Mantén la moto en lugar visible y seguro", "No dejes la moto sola hasta que llegue la grúa"] },
+  { id: "desconocido", icon: "🗺️", label: "Zona desconocida", guia: ["Activa el GPS de tu celular", "Busca una gasolinera o tienda para orientarte", "Avisa tu ubicación a alguien de confianza", "Evita zonas oscuras o solitarias de noche", "Busca otros moteros en el Radar"] },
+];
+
+const categoriasFiltro = ["Todos", "Taller", "Gasolina", "Vulcanizadora", "Refaccionaria", "Punto de reunión", "Evento", "Aliado Radashi"];
 
 function Avatar({ foto, size = 48, emoji = "😎" }) {
   if (foto) return <img src={foto} alt="perfil" style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", border: "2px solid " + COLORS.orange, flexShrink: 0 }} />;
@@ -276,11 +298,9 @@ function Feed({ user, perfil }) {
   );
 }
 
-// ── VISOR INTERNO ──────────────────────────────────────────────
 function Visor({ url, titulo, onCerrar }) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
-
   return (
     <div style={{ background: COLORS.bg, minHeight: "100vh", fontFamily: "system-ui, sans-serif", display: "flex", flexDirection: "column" }}>
       <div style={{ background: COLORS.surface, padding: "16px 20px", borderBottom: "1px solid " + COLORS.border, display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
@@ -298,19 +318,237 @@ function Visor({ url, titulo, onCerrar }) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 40, flexDirection: "column", gap: 16, flex: 1 }}>
           <div style={{ fontSize: 48 }}>🔒</div>
           <div style={{ color: COLORS.text, fontWeight: 700, fontSize: 16, textAlign: "center" }}>Esta página no permite abrirse aquí</div>
-          <div style={{ color: COLORS.muted, fontSize: 13, textAlign: "center" }}>Toca el botón de abajo para verla en tu navegador</div>
-          <a href={url} target="_blank" rel="noopener noreferrer" style={{ background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", borderRadius: 14, padding: "14px 32px", color: "#fff", fontWeight: 900, fontSize: 15, textDecoration: "none" }}>
-            Abrir en navegador ↗
-          </a>
+          <a href={url} target="_blank" rel="noopener noreferrer" style={{ background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", borderRadius: 14, padding: "14px 32px", color: "#fff", fontWeight: 900, fontSize: 15, textDecoration: "none" }}>Abrir en navegador ↗</a>
         </div>
       )}
-      <iframe
-        src={url}
-        style={{ flex: 1, border: "none", width: "100%", minHeight: "calc(100vh - 60px)", display: error ? "none" : "block" }}
-        title={titulo}
-        onLoad={() => setCargando(false)}
-        onError={() => { setCargando(false); setError(true); }}
-      />
+      <iframe src={url} style={{ flex: 1, border: "none", width: "100%", minHeight: "calc(100vh - 60px)", display: error ? "none" : "block" }} title={titulo} onLoad={() => setCargando(false)} onError={() => { setCargando(false); setError(true); }} />
+    </div>
+  );
+}
+
+// ── RADAR ──────────────────────────────────────────────────────
+function Radar({ user, perfil, showToast }) {
+  const [radarTab, setRadarTab] = useState("radashis");
+  const [selected, setSelected] = useState(null);
+  const [categoriaFiltro, setCategoriaFiltro] = useState("Todos");
+  const [emergenciaActiva, setEmergenciaActiva] = useState(null);
+  const [alertaEnviada, setAlertaEnviada] = useState(false);
+  const [alertasActivas, setAlertasActivas] = useState([]);
+  const [enviandoAlerta, setEnviandoAlerta] = useState(false);
+
+  // Escuchar alertas de emergencia en tiempo real
+  useEffect(() => {
+    const hace30min = new Date(Date.now() - 30 * 60 * 1000);
+    const q = query(
+      collection(db, "emergencias"),
+      where("activa", "==", true),
+      orderBy("createdAt", "desc")
+    );
+    const unsub = onSnapshot(q, snap => {
+      const alertas = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(a => a.userId !== user.uid);
+      setAlertasActivas(alertas);
+    });
+    return unsub;
+  }, [user.uid]);
+
+  const enviarAlerta = async (emergencia) => {
+    setEnviandoAlerta(true);
+    try {
+      await addDoc(collection(db, "emergencias"), {
+        tipo: emergencia.label,
+        icon: emergencia.icon,
+        userId: user.uid,
+        userNombre: perfil.nombre || user.email,
+        zona: perfil.ciudad || "Zona desconocida",
+        activa: true,
+        createdAt: serverTimestamp(),
+      });
+      setAlertaEnviada(true);
+      showToast("¡Alerta enviada a Radashis cercanos! 🆘");
+    } catch (e) { console.error(e); }
+    setEnviandoAlerta(false);
+  };
+
+  const puntosFiltrados = categoriaFiltro === "Todos"
+    ? puntosUtiles
+    : puntosUtiles.filter(p => p.tipo === categoriaFiltro);
+
+  const radarTabs = [
+    { id: "radashis", icon: "👥", label: "Radashis" },
+    { id: "puntos", icon: "🧭", label: "Puntos" },
+    { id: "emergencia", icon: "🆘", label: "Emergencia" },
+  ];
+
+  return (
+    <div>
+      {/* Banner alertas activas */}
+      {alertasActivas.length > 0 && (
+        <div style={{ background: "#2A0000", border: "1px solid " + COLORS.red, borderRadius: 14, padding: 14, marginBottom: 16 }}>
+          <div style={{ color: COLORS.red, fontWeight: 800, fontSize: 13, marginBottom: 8 }}>🆘 Radashi necesita ayuda cerca</div>
+          {alertasActivas.map((a, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: i > 0 ? "1px solid #3A0000" : "none" }}>
+              <span style={{ fontSize: 22 }}>{a.icon}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: COLORS.text, fontSize: 13, fontWeight: 700 }}>{a.userNombre} — {a.tipo}</div>
+                <div style={{ color: COLORS.muted, fontSize: 12 }}>📍 {a.zona}</div>
+              </div>
+              <button style={{ background: COLORS.red, border: "none", borderRadius: 20, padding: "6px 14px", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Ayudar</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Sub-tabs */}
+      <div style={{ display: "flex", background: COLORS.card, borderRadius: 12, padding: 4, marginBottom: 16, border: "1px solid " + COLORS.border }}>
+        {radarTabs.map(t => (
+          <button key={t.id} onClick={() => setRadarTab(t.id)} style={{ flex: 1, padding: "8px 4px", borderRadius: 10, border: "none", cursor: "pointer", background: radarTab === t.id ? (t.id === "emergencia" ? COLORS.red : COLORS.orange) : "transparent", color: radarTab === t.id ? "#fff" : COLORS.muted, fontWeight: radarTab === t.id ? 700 : 400, fontSize: 12 }}>
+            {t.icon} {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* RADASHIS CERCA */}
+      {radarTab === "radashis" && (
+        <div>
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ color: COLORS.text, fontWeight: 800, fontSize: 20 }}>Radashis cerca 📡</div>
+            <div style={{ color: COLORS.muted, fontSize: 13, marginTop: 4 }}>Conecta con moteros de la comunidad cerca de tu zona.</div>
+          </div>
+          {nearbyUsers.map(u => (
+            <div key={u.id} onClick={() => setSelected(u)} style={{ background: COLORS.card, borderRadius: 14, border: "1px solid " + COLORS.border, padding: 14, marginBottom: 10, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+              <div style={{ width: 48, height: 48, borderRadius: "50%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 }}>{u.avatar}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ color: COLORS.text, fontWeight: 700, fontSize: 15 }}>{u.name}</span>
+                  {u.clan && <span style={{ background: COLORS.gold, color: "#000", fontSize: 9, padding: "1px 6px", borderRadius: 10, fontWeight: 800 }}>CLAN</span>}
+                </div>
+                <div style={{ color: COLORS.muted, fontSize: 12 }}>📍 {u.zona} · ~{u.km} km</div>
+                <div style={{ color: COLORS.orange, fontSize: 12 }}>🏍️ {u.moto}</div>
+              </div>
+              <span style={{ color: COLORS.muted, fontSize: 20 }}>›</span>
+            </div>
+          ))}
+
+          {/* Modal usuario */}
+          {selected && (
+            <div style={{ position: "fixed", inset: 0, background: "#000000CC", zIndex: 200, display: "flex", alignItems: "flex-end" }} onClick={() => setSelected(null)}>
+              <div style={{ background: COLORS.surface, borderRadius: "24px 24px 0 0", width: "100%", padding: 24 }} onClick={e => e.stopPropagation()}>
+                <div style={{ width: 40, height: 4, background: COLORS.border, borderRadius: 2, margin: "0 auto 20px" }} />
+                <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 16 }}>
+                  <div style={{ width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 }}>{selected.avatar}</div>
+                  <div>
+                    <div style={{ color: COLORS.text, fontWeight: 900, fontSize: 20 }}>{selected.name}</div>
+                    <div style={{ color: COLORS.muted, fontSize: 13 }}>📍 {selected.zona} · ~{selected.km} km</div>
+                    <div style={{ color: COLORS.orange, fontSize: 13 }}>🏍️ {selected.moto}</div>
+                    {selected.clan && <span style={{ background: COLORS.gold, color: "#000", fontSize: 10, padding: "2px 8px", borderRadius: 10, fontWeight: 800 }}>⭐ CLAN</span>}
+                  </div>
+                </div>
+                <div style={{ color: COLORS.text, fontSize: 14, padding: "12px 16px", background: COLORS.card, borderRadius: 12, marginBottom: 16 }}>"{selected.bio}"</div>
+                <button onClick={() => setSelected(null)} style={{ width: "100%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", border: "none", borderRadius: 14, padding: 14, color: "#fff", fontWeight: 900, fontSize: 15, cursor: "pointer" }}>💬 Enviar mensaje</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* PUNTOS ÚTILES */}
+      {radarTab === "puntos" && (
+        <div>
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ color: COLORS.text, fontWeight: 800, fontSize: 20 }}>Puntos útiles 🧭</div>
+            <div style={{ color: COLORS.muted, fontSize: 13, marginTop: 4 }}>Lugares que pueden ayudarte si vas en moto o estás en ruta.</div>
+          </div>
+          {/* Filtros */}
+          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 12, marginBottom: 8 }}>
+            {categoriasFiltro.map(cat => (
+              <button key={cat} onClick={() => setCategoriaFiltro(cat)} style={{ flexShrink: 0, padding: "6px 14px", borderRadius: 20, border: "1px solid " + (categoriaFiltro === cat ? COLORS.orange : COLORS.border), background: categoriaFiltro === cat ? COLORS.orangeGlow : "transparent", color: categoriaFiltro === cat ? COLORS.orange : COLORS.muted, fontSize: 12, cursor: "pointer", fontWeight: categoriaFiltro === cat ? 700 : 400 }}>{cat}</button>
+            ))}
+          </div>
+          {puntosFiltrados.map(p => (
+            <div key={p.id} style={{ background: COLORS.card, borderRadius: 14, border: "1px solid " + (p.aliado ? COLORS.gold + "55" : COLORS.border), padding: 14, marginBottom: 10, display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: COLORS.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{p.icon}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                  <span style={{ color: COLORS.text, fontWeight: 700, fontSize: 14 }}>{p.nombre}</span>
+                  {p.aliado && <span style={{ background: COLORS.gold, color: "#000", fontSize: 9, padding: "1px 6px", borderRadius: 10, fontWeight: 800 }}>ALIADO</span>}
+                </div>
+                <div style={{ color: COLORS.muted, fontSize: 12, marginBottom: 2 }}>📍 {p.zona}</div>
+                <div style={{ color: COLORS.muted, fontSize: 12 }}>{p.desc}</div>
+                <div style={{ marginTop: 6 }}>
+                  <span style={{ background: COLORS.surface, border: "1px solid " + COLORS.border, borderRadius: 20, padding: "3px 10px", color: COLORS.muted, fontSize: 11 }}>{p.tipo}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* EMERGENCIA */}
+      {radarTab === "emergencia" && (
+        <div>
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ color: COLORS.red, fontWeight: 800, fontSize: 20 }}>Modo emergencia 🆘</div>
+            <div style={{ color: COLORS.muted, fontSize: 13, marginTop: 4 }}>Guía rápida para situaciones comunes. Toca tu situación.</div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+            {emergencias.map(e => (
+              <button key={e.id} onClick={() => { setEmergenciaActiva(e); setAlertaEnviada(false); }} style={{ background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 14, padding: 16, cursor: "pointer", textAlign: "left" }}>
+                <div style={{ fontSize: 28, marginBottom: 8 }}>{e.icon}</div>
+                <div style={{ color: COLORS.text, fontWeight: 700, fontSize: 13 }}>{e.label}</div>
+              </button>
+            ))}
+          </div>
+
+          <div style={{ background: "#0A1A0A", border: "1px solid " + COLORS.green + "44", borderRadius: 14, padding: 14 }}>
+            <div style={{ color: COLORS.green, fontWeight: 700, fontSize: 13, marginBottom: 4 }}>⚠️ Importante</div>
+            <div style={{ color: COLORS.muted, fontSize: 12, lineHeight: 1.6 }}>En caso de emergencia médica real, llama al 911. Esta sección es una guía de apoyo para situaciones comunes en moto.</div>
+          </div>
+
+          {/* Modal emergencia */}
+          {emergenciaActiva && (
+            <div style={{ position: "fixed", inset: 0, background: "#000000CC", zIndex: 300, display: "flex", alignItems: "flex-end" }} onClick={() => setEmergenciaActiva(null)}>
+              <div style={{ background: COLORS.surface, borderRadius: "24px 24px 0 0", width: "100%", maxHeight: "85vh", display: "flex", flexDirection: "column" }} onClick={e => e.stopPropagation()}>
+                <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid " + COLORS.border }}>
+                  <div style={{ width: 40, height: 4, background: COLORS.border, borderRadius: 2, margin: "0 auto 16px" }} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <span style={{ fontSize: 32 }}>{emergenciaActiva.icon}</span>
+                    <div style={{ color: COLORS.text, fontWeight: 900, fontSize: 18 }}>{emergenciaActiva.label}</div>
+                  </div>
+                </div>
+                <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+                  <div style={{ color: COLORS.orange, fontWeight: 700, fontSize: 13, marginBottom: 12 }}>QUÉ HACER:</div>
+                  {emergenciaActiva.guia.map((paso, i) => (
+                    <div key={i} style={{ display: "flex", gap: 12, marginBottom: 14, alignItems: "flex-start" }}>
+                      <div style={{ width: 26, height: 26, borderRadius: "50%", background: COLORS.orange, color: "#fff", fontWeight: 900, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
+                      <div style={{ color: COLORS.text, fontSize: 14, lineHeight: 1.5, paddingTop: 4 }}>{paso}</div>
+                    </div>
+                  ))}
+
+                  <div style={{ background: "#1A0000", border: "1px solid " + COLORS.red + "55", borderRadius: 14, padding: 16, marginTop: 8 }}>
+                    <div style={{ color: COLORS.red, fontWeight: 800, fontSize: 14, marginBottom: 8 }}>📡 Alertar a Radashis cercanos</div>
+                    <div style={{ color: COLORS.muted, fontSize: 13, marginBottom: 12 }}>
+                      {alertaEnviada
+                        ? "✅ Alerta enviada. Los Radashis cercanos pueden ver tu situación y ofrecerte ayuda."
+                        : "Manda una alerta a los moteros de la comunidad que estén cerca. Alguien puede ayudarte."}
+                    </div>
+                    {!alertaEnviada && (
+                      <button onClick={() => enviarAlerta(emergenciaActiva)} disabled={enviandoAlerta} style={{ width: "100%", background: COLORS.red, border: "none", borderRadius: 12, padding: "12px", color: "#fff", fontWeight: 900, fontSize: 14, cursor: "pointer" }}>
+                        {enviandoAlerta ? "Enviando..." : "🆘 Pedir ayuda a Radashis"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div style={{ padding: "12px 20px 32px", borderTop: "1px solid " + COLORS.border }}>
+                  <button onClick={() => setEmergenciaActiva(null)} style={{ width: "100%", background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 14, padding: 14, color: COLORS.muted, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Cerrar</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -318,13 +556,11 @@ function Visor({ url, titulo, onCerrar }) {
 // ── APP PRINCIPAL ──────────────────────────────────────────────
 export default function RadashiApp({ user, onLogout }) {
   const [tab, setTab] = useState("feed");
-  const [connected, setConnected] = useState({ 1: true, 3: true });
-  const [selected, setSelected] = useState(null);
   const [toast, setToast] = useState(null);
   const [chatUser, setChatUser] = useState(null);
   const [editando, setEditando] = useState(false);
   const [perfil, setPerfil] = useState({});
-  const [visor, setVisor] = useState(null); // { url, titulo }
+  const [visor, setVisor] = useState(null);
   const [chats, setChats] = useState({
     1: [{ from: "them", text: "Hey! Vi que estás en Cuautitlán también", time: "10:14" }, { from: "me", text: "Sí! Tienes CB500 verdad?", time: "10:16" }],
     3: [{ from: "them", text: "Hola! Vi que también eres del Clan", time: "ayer" }, { from: "me", text: "Sí! Ya viste la clase de frenos?", time: "ayer" }],
@@ -341,13 +577,6 @@ export default function RadashiApp({ user, onLogout }) {
 
   const showToast = (m) => { setToast(m); setTimeout(() => setToast(null), 3000); };
 
-  const handleConnect = (id) => {
-    setConnected(c => ({ ...c, [id]: true }));
-    const u = nearbyUsers.find(u => u.id === id);
-    showToast("Conectado con " + u.name + "! 🤝");
-    setSelected(null);
-  };
-
   const handleSend = () => {
     if (!msg.trim() || !chatUser) return;
     setChats(c => ({ ...c, [chatUser.id]: [...(c[chatUser.id] || []), { from: "me", text: msg, time: "ahora" }] }));
@@ -362,7 +591,6 @@ export default function RadashiApp({ user, onLogout }) {
   ];
 
   if (editando) return <EditarPerfil user={user} perfil={perfil} onGuardar={(data) => { setPerfil(data); setEditando(false); showToast("Perfil guardado! 🔥"); }} onCancelar={() => setEditando(false)} />;
-
   if (visor) return <Visor url={visor.url} titulo={visor.titulo} onCerrar={() => setVisor(null)} />;
 
   if (chatUser) {
@@ -370,7 +598,7 @@ export default function RadashiApp({ user, onLogout }) {
       <div style={{ background: COLORS.bg, minHeight: "100vh", fontFamily: "system-ui, sans-serif", display: "flex", flexDirection: "column" }}>
         <div style={{ background: COLORS.surface, padding: "16px", borderBottom: "1px solid " + COLORS.border, display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={() => setChatUser(null)} style={{ background: "none", border: "none", color: COLORS.orange, fontSize: 22, cursor: "pointer" }}>←</button>
-          <Avatar emoji={chatUser.avatar} size={40} />
+          <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>{chatUser.avatar}</div>
           <div>
             <div style={{ color: COLORS.text, fontWeight: 700 }}>{chatUser.name}</div>
             <div style={{ color: COLORS.green, fontSize: 12 }}>● En línea</div>
@@ -412,56 +640,21 @@ export default function RadashiApp({ user, onLogout }) {
 
       <div style={{ padding: 16 }}>
         {tab === "feed" && <Feed user={user} perfil={perfil} />}
-
-        {tab === "cerca" && (
-          <div>
-            <div style={{ color: COLORS.text, fontWeight: 800, fontSize: 20, marginBottom: 16 }}>Radashis cerca 📡</div>
-            {nearbyUsers.map(u => (
-              <div key={u.id} onClick={() => setSelected(u)} style={{ background: COLORS.card, borderRadius: 14, border: "1px solid " + (connected[u.id] ? COLORS.green + "55" : COLORS.border), padding: 14, marginBottom: 10, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
-                <Avatar emoji={u.avatar} size={48} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ color: COLORS.text, fontWeight: 700, fontSize: 15 }}>{u.name}</span>
-                    {u.clan && <span style={{ background: COLORS.gold, color: "#000", fontSize: 9, padding: "1px 6px", borderRadius: 10, fontWeight: 800 }}>CLAN</span>}
-                  </div>
-                  <div style={{ color: COLORS.muted, fontSize: 12 }}>📍 {u.city} · {u.km} km</div>
-                  <div style={{ color: COLORS.orange, fontSize: 12 }}>🏍️ {u.moto}</div>
-                </div>
-                {connected[u.id]
-                  ? <button onClick={e => { e.stopPropagation(); setChatUser(u); }} style={{ background: COLORS.greenGlow, border: "1px solid " + COLORS.green, color: COLORS.green, borderRadius: 20, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>💬 Chat</button>
-                  : <span style={{ color: COLORS.muted, fontSize: 20 }}>›</span>
-                }
-              </div>
-            ))}
-          </div>
-        )}
+        {tab === "cerca" && <Radar user={user} perfil={perfil} showToast={showToast} />}
 
         {tab === "clan" && (
           <div>
-            {/* CLAN */}
             <div style={{ background: "linear-gradient(135deg, #1A1000, #2A1800)", border: "1px solid " + COLORS.gold + "44", borderRadius: 18, padding: 20, marginBottom: 16 }}>
               <div style={{ color: COLORS.gold, fontSize: 11, fontWeight: 800, letterSpacing: 2, marginBottom: 6 }}>⭐ CLAN RADASHI</div>
               <div style={{ color: COLORS.text, fontWeight: 900, fontSize: 20, lineHeight: 1.2, marginBottom: 8 }}>Deja de adivinar, empieza a entender tu moto</div>
               <div style={{ color: COLORS.muted, fontSize: 13, marginBottom: 16 }}>Clases en vivo · Grabaciones · Guías · Comunidad exclusiva</div>
-              <button
-                onClick={() => setVisor({ url: "https://nas.com/es-mx/zona-radashi/home", titulo: "Clan Radashi" })}
-                style={{ background: "linear-gradient(135deg, " + COLORS.gold + ", " + COLORS.orange + ")", border: "none", borderRadius: 12, padding: "12px 24px", color: "#000", fontWeight: 900, fontSize: 15, cursor: "pointer", width: "100%" }}
-              >
-                Únete al Clan 🔥
-              </button>
+              <button onClick={() => setVisor({ url: "https://nas.com/es-mx/zona-radashi/home", titulo: "Clan Radashi" })} style={{ background: "linear-gradient(135deg, " + COLORS.gold + ", " + COLORS.orange + ")", border: "none", borderRadius: 12, padding: "12px 24px", color: "#000", fontWeight: 900, fontSize: 15, cursor: "pointer", width: "100%" }}>Únete al Clan 🔥</button>
             </div>
-
-            {/* TIENDA */}
             <div style={{ background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 18, padding: 20 }}>
               <div style={{ color: COLORS.orange, fontSize: 11, fontWeight: 800, letterSpacing: 2, marginBottom: 6 }}>🛒 TIENDA OFICIAL</div>
               <div style={{ color: COLORS.text, fontWeight: 900, fontSize: 20, lineHeight: 1.2, marginBottom: 8 }}>Refacciones, accesorios y más</div>
               <div style={{ color: COLORS.muted, fontSize: 13, marginBottom: 16 }}>Todo lo que tu moto necesita en un solo lugar</div>
-              <button
-                onClick={() => setVisor({ url: "https://tallerdemotoszonaradashi.com/", titulo: "Tienda Zona Radashi" })}
-                style={{ background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", border: "none", borderRadius: 12, padding: "12px 24px", color: "#fff", fontWeight: 900, fontSize: 15, cursor: "pointer", width: "100%" }}
-              >
-                Ir a la Tienda 🛍️
-              </button>
+              <button onClick={() => setVisor({ url: "https://tallerdemotoszonaradashi.com/", titulo: "Tienda Zona Radashi" })} style={{ background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", border: "none", borderRadius: 12, padding: "12px 24px", color: "#fff", fontWeight: 900, fontSize: 15, cursor: "pointer", width: "100%" }}>Ir a la Tienda 🛍️</button>
             </div>
           </div>
         )}
@@ -481,27 +674,6 @@ export default function RadashiApp({ user, onLogout }) {
           </div>
         )}
       </div>
-
-      {selected && (
-        <div style={{ position: "fixed", inset: 0, background: "#000000CC", zIndex: 200, display: "flex", alignItems: "flex-end" }} onClick={() => setSelected(null)}>
-          <div style={{ background: COLORS.surface, borderRadius: "24px 24px 0 0", width: "100%", padding: 24 }} onClick={e => e.stopPropagation()}>
-            <div style={{ width: 40, height: 4, background: COLORS.border, borderRadius: 2, margin: "0 auto 20px" }} />
-            <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 16 }}>
-              <Avatar emoji={selected.avatar} size={64} />
-              <div>
-                <div style={{ color: COLORS.text, fontWeight: 900, fontSize: 20 }}>{selected.name}</div>
-                <div style={{ color: COLORS.muted, fontSize: 13 }}>📍 {selected.city} · {selected.km} km</div>
-                <div style={{ color: COLORS.orange, fontSize: 13 }}>🏍️ {selected.moto}</div>
-              </div>
-            </div>
-            <div style={{ color: COLORS.text, fontSize: 14, padding: "12px 16px", background: COLORS.card, borderRadius: 12, marginBottom: 16 }}>"{selected.bio}"</div>
-            {connected[selected.id]
-              ? <button onClick={() => { setChatUser(selected); setSelected(null); }} style={{ width: "100%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", border: "none", borderRadius: 14, padding: 14, color: "#fff", fontWeight: 900, fontSize: 15, cursor: "pointer" }}>💬 Enviar mensaje</button>
-              : <button onClick={() => handleConnect(selected.id)} style={{ width: "100%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", border: "none", borderRadius: 14, padding: 14, color: "#fff", fontWeight: 900, fontSize: 15, cursor: "pointer" }}>🤝 Conectar con {selected.name.split("_")[0]}</button>
-            }
-          </div>
-        </div>
-      )}
 
       <div style={{ position: "fixed", bottom: 0, width: "100%", background: COLORS.surface, borderTop: "1px solid " + COLORS.border, display: "flex", padding: "10px 0 20px" }}>
         {tabs.map(t => (
