@@ -76,9 +76,8 @@ export default function MiMoto({ user }) {
   const intervalo = parseFloat(datos.intervaloServicio) || 0;
   const kmProximo = kmUltimo + intervalo;
   const kmFaltantes = kmProximo - kmActuales;
-  const servicioOk = kmFaltantes > 500;
-  const servicioPronto = kmFaltantes <= 500 && kmFaltantes > 0;
-  const servicioVencido = kmFaltantes <= 0;
+  const servicioVencido = kmProximo > 0 && kmFaltantes <= 0;
+  const servicioPronto = kmProximo > 0 && kmFaltantes > 0 && kmFaltantes <= 500;
 
   // Cálculo rendimiento
   const km1 = parseFloat(datos.km1) || 0;
