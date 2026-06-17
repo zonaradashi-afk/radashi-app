@@ -178,7 +178,6 @@ function Comentarios({ postId, user, perfil, onCerrar }) {
           <div style={{ width: 40, height: 4, background: COLORS.border, borderRadius: 2, margin: "0 auto 16px" }} />
           <div style={{ color: COLORS.text, fontWeight: 800, fontSize: 16 }}>Comentarios 💬</div>
         </div>
-
         <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
           {comentarios.length === 0 && (
             <div style={{ textAlign: "center", padding: 30, color: COLORS.muted, fontSize: 14 }}>Sé el primero en comentar 🏍️</div>
@@ -194,7 +193,6 @@ function Comentarios({ postId, user, perfil, onCerrar }) {
             </div>
           ))}
         </div>
-
         <div style={{ padding: "12px 16px 32px", borderTop: "1px solid " + COLORS.border, display: "flex", gap: 10, alignItems: "center" }}>
           <Avatar foto={perfil.foto} size={36} />
           <input value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => e.key === "Enter" && handleComentar()} placeholder="Escribe un comentario..." style={{ flex: 1, background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 20, padding: "10px 16px", color: COLORS.text, fontSize: 14, outline: "none" }} />
@@ -235,7 +233,6 @@ function Feed({ user, perfil }) {
         <Avatar foto={perfil.foto} size={40} />
         <div style={{ flex: 1, background: COLORS.surface, borderRadius: 20, padding: "10px 16px", color: COLORS.muted, fontSize: 14 }}>¿Qué le pasa a tu moto hoy? 🏍️</div>
       </div>
-
       {posts.length === 0 && (
         <div style={{ textAlign: "center", padding: 40 }}>
           <div style={{ fontSize: 48 }}>🏍️</div>
@@ -243,7 +240,6 @@ function Feed({ user, perfil }) {
           <div style={{ color: COLORS.muted, fontSize: 14, marginTop: 8 }}>Comparte algo con la comunidad Radashi</div>
         </div>
       )}
-
       {posts.map(p => (
         <div key={p.id} style={{ background: COLORS.card, borderRadius: 16, border: "1px solid " + COLORS.border, marginBottom: 12, overflow: "hidden" }}>
           <div style={{ padding: "14px 14px 10px", display: "flex", alignItems: "center", gap: 10 }}>
@@ -274,13 +270,52 @@ function Feed({ user, perfil }) {
           </div>
         </div>
       ))}
-
       {nuevoPost && <NuevoPost user={user} perfil={perfil} onCerrar={() => setNuevoPost(false)} />}
       {verComentarios && <Comentarios postId={verComentarios} user={user} perfil={perfil} onCerrar={() => setVerComentarios(null)} />}
     </div>
   );
 }
 
+// ── VISOR INTERNO ──────────────────────────────────────────────
+function Visor({ url, titulo, onCerrar }) {
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(false);
+
+  return (
+    <div style={{ background: COLORS.bg, minHeight: "100vh", fontFamily: "system-ui, sans-serif", display: "flex", flexDirection: "column" }}>
+      <div style={{ background: COLORS.surface, padding: "16px 20px", borderBottom: "1px solid " + COLORS.border, display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+        <button onClick={onCerrar} style={{ background: "none", border: "none", color: COLORS.orange, fontSize: 22, cursor: "pointer", flexShrink: 0 }}>←</button>
+        <div style={{ color: COLORS.text, fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{titulo}</div>
+        <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: COLORS.muted, fontSize: 12, flexShrink: 0, textDecoration: "none" }}>↗ Abrir</a>
+      </div>
+      {cargando && !error && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 40, flexDirection: "column", gap: 12 }}>
+          <div style={{ fontSize: 36 }}>⚙️</div>
+          <div style={{ color: COLORS.muted, fontSize: 14 }}>Cargando...</div>
+        </div>
+      )}
+      {error && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 40, flexDirection: "column", gap: 16, flex: 1 }}>
+          <div style={{ fontSize: 48 }}>🔒</div>
+          <div style={{ color: COLORS.text, fontWeight: 700, fontSize: 16, textAlign: "center" }}>Esta página no permite abrirse aquí</div>
+          <div style={{ color: COLORS.muted, fontSize: 13, textAlign: "center" }}>Toca el botón de abajo para verla en tu navegador</div>
+          <a href={url} target="_blank" rel="noopener noreferrer" style={{ background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", borderRadius: 14, padding: "14px 32px", color: "#fff", fontWeight: 900, fontSize: 15, textDecoration: "none" }}>
+            Abrir en navegador ↗
+          </a>
+        </div>
+      )}
+      <iframe
+        src={url}
+        style={{ flex: 1, border: "none", width: "100%", minHeight: "calc(100vh - 60px)", display: error ? "none" : "block" }}
+        title={titulo}
+        onLoad={() => setCargando(false)}
+        onError={() => { setCargando(false); setError(true); }}
+      />
+    </div>
+  );
+}
+
+// ── APP PRINCIPAL ──────────────────────────────────────────────
 export default function RadashiApp({ user, onLogout }) {
   const [tab, setTab] = useState("feed");
   const [connected, setConnected] = useState({ 1: true, 3: true });
@@ -289,6 +324,7 @@ export default function RadashiApp({ user, onLogout }) {
   const [chatUser, setChatUser] = useState(null);
   const [editando, setEditando] = useState(false);
   const [perfil, setPerfil] = useState({});
+  const [visor, setVisor] = useState(null); // { url, titulo }
   const [chats, setChats] = useState({
     1: [{ from: "them", text: "Hey! Vi que estás en Cuautitlán también", time: "10:14" }, { from: "me", text: "Sí! Tienes CB500 verdad?", time: "10:16" }],
     3: [{ from: "them", text: "Hola! Vi que también eres del Clan", time: "ayer" }, { from: "me", text: "Sí! Ya viste la clase de frenos?", time: "ayer" }],
@@ -326,6 +362,8 @@ export default function RadashiApp({ user, onLogout }) {
   ];
 
   if (editando) return <EditarPerfil user={user} perfil={perfil} onGuardar={(data) => { setPerfil(data); setEditando(false); showToast("Perfil guardado! 🔥"); }} onCancelar={() => setEditando(false)} />;
+
+  if (visor) return <Visor url={visor.url} titulo={visor.titulo} onCerrar={() => setVisor(null)} />;
 
   if (chatUser) {
     return (
@@ -400,11 +438,30 @@ export default function RadashiApp({ user, onLogout }) {
 
         {tab === "clan" && (
           <div>
+            {/* CLAN */}
             <div style={{ background: "linear-gradient(135deg, #1A1000, #2A1800)", border: "1px solid " + COLORS.gold + "44", borderRadius: 18, padding: 20, marginBottom: 16 }}>
               <div style={{ color: COLORS.gold, fontSize: 11, fontWeight: 800, letterSpacing: 2, marginBottom: 6 }}>⭐ CLAN RADASHI</div>
               <div style={{ color: COLORS.text, fontWeight: 900, fontSize: 20, lineHeight: 1.2, marginBottom: 8 }}>Deja de adivinar, empieza a entender tu moto</div>
               <div style={{ color: COLORS.muted, fontSize: 13, marginBottom: 16 }}>Clases en vivo · Grabaciones · Guías · Comunidad exclusiva</div>
-              <button style={{ background: "linear-gradient(135deg, " + COLORS.gold + ", " + COLORS.orange + ")", border: "none", borderRadius: 12, padding: "12px 24px", color: "#000", fontWeight: 900, fontSize: 15, cursor: "pointer", width: "100%" }}>Únete al Clan 🔥</button>
+              <button
+                onClick={() => setVisor({ url: "https://nas.com/es-mx/zona-radashi/home", titulo: "Clan Radashi" })}
+                style={{ background: "linear-gradient(135deg, " + COLORS.gold + ", " + COLORS.orange + ")", border: "none", borderRadius: 12, padding: "12px 24px", color: "#000", fontWeight: 900, fontSize: 15, cursor: "pointer", width: "100%" }}
+              >
+                Únete al Clan 🔥
+              </button>
+            </div>
+
+            {/* TIENDA */}
+            <div style={{ background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 18, padding: 20 }}>
+              <div style={{ color: COLORS.orange, fontSize: 11, fontWeight: 800, letterSpacing: 2, marginBottom: 6 }}>🛒 TIENDA OFICIAL</div>
+              <div style={{ color: COLORS.text, fontWeight: 900, fontSize: 20, lineHeight: 1.2, marginBottom: 8 }}>Refacciones, accesorios y más</div>
+              <div style={{ color: COLORS.muted, fontSize: 13, marginBottom: 16 }}>Todo lo que tu moto necesita en un solo lugar</div>
+              <button
+                onClick={() => setVisor({ url: "https://tallerdemotoszonaradashi.com/", titulo: "Tienda Zona Radashi" })}
+                style={{ background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", border: "none", borderRadius: 12, padding: "12px 24px", color: "#fff", fontWeight: 900, fontSize: 15, cursor: "pointer", width: "100%" }}
+              >
+                Ir a la Tienda 🛍️
+              </button>
             </div>
           </div>
         )}
