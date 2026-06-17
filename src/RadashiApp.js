@@ -338,8 +338,7 @@ function Radar({ user, perfil, showToast }) {
 
   // Escuchar alertas de emergencia en tiempo real
   useEffect(() => {
-    const hace30min = new Date(Date.now() - 30 * 60 * 1000);
-    const q = query(
+        const q = query(
       collection(db, "emergencias"),
       where("activa", "==", true),
       orderBy("createdAt", "desc")
