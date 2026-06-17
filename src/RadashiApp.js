@@ -326,7 +326,6 @@ function Visor({ url, titulo, onCerrar }) {
   );
 }
 
-// ── RADAR ──────────────────────────────────────────────────────
 function Radar({ user, perfil, showToast }) {
   const [radarTab, setRadarTab] = useState("radashis");
   const [selected, setSelected] = useState(null);
@@ -336,9 +335,8 @@ function Radar({ user, perfil, showToast }) {
   const [alertasActivas, setAlertasActivas] = useState([]);
   const [enviandoAlerta, setEnviandoAlerta] = useState(false);
 
-  // Escuchar alertas de emergencia en tiempo real
   useEffect(() => {
-        const q = query(
+    const q = query(
       collection(db, "emergencias"),
       where("activa", "==", true),
       orderBy("createdAt", "desc")
@@ -382,7 +380,6 @@ function Radar({ user, perfil, showToast }) {
 
   return (
     <div>
-      {/* Banner alertas activas */}
       {alertasActivas.length > 0 && (
         <div style={{ background: "#2A0000", border: "1px solid " + COLORS.red, borderRadius: 14, padding: 14, marginBottom: 16 }}>
           <div style={{ color: COLORS.red, fontWeight: 800, fontSize: 13, marginBottom: 8 }}>🆘 Radashi necesita ayuda cerca</div>
@@ -399,7 +396,6 @@ function Radar({ user, perfil, showToast }) {
         </div>
       )}
 
-      {/* Sub-tabs */}
       <div style={{ display: "flex", background: COLORS.card, borderRadius: 12, padding: 4, marginBottom: 16, border: "1px solid " + COLORS.border }}>
         {radarTabs.map(t => (
           <button key={t.id} onClick={() => setRadarTab(t.id)} style={{ flex: 1, padding: "8px 4px", borderRadius: 10, border: "none", cursor: "pointer", background: radarTab === t.id ? (t.id === "emergencia" ? COLORS.red : COLORS.orange) : "transparent", color: radarTab === t.id ? "#fff" : COLORS.muted, fontWeight: radarTab === t.id ? 700 : 400, fontSize: 12 }}>
@@ -408,7 +404,6 @@ function Radar({ user, perfil, showToast }) {
         ))}
       </div>
 
-      {/* RADASHIS CERCA */}
       {radarTab === "radashis" && (
         <div>
           <div style={{ marginBottom: 16 }}>
@@ -429,8 +424,6 @@ function Radar({ user, perfil, showToast }) {
               <span style={{ color: COLORS.muted, fontSize: 20 }}>›</span>
             </div>
           ))}
-
-          {/* Modal usuario */}
           {selected && (
             <div style={{ position: "fixed", inset: 0, background: "#000000CC", zIndex: 200, display: "flex", alignItems: "flex-end" }} onClick={() => setSelected(null)}>
               <div style={{ background: COLORS.surface, borderRadius: "24px 24px 0 0", width: "100%", padding: 24 }} onClick={e => e.stopPropagation()}>
@@ -452,14 +445,12 @@ function Radar({ user, perfil, showToast }) {
         </div>
       )}
 
-      {/* PUNTOS ÚTILES */}
       {radarTab === "puntos" && (
         <div>
           <div style={{ marginBottom: 16 }}>
             <div style={{ color: COLORS.text, fontWeight: 800, fontSize: 20 }}>Puntos útiles 🧭</div>
             <div style={{ color: COLORS.muted, fontSize: 13, marginTop: 4 }}>Lugares que pueden ayudarte si vas en moto o estás en ruta.</div>
           </div>
-          {/* Filtros */}
           <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 12, marginBottom: 8 }}>
             {categoriasFiltro.map(cat => (
               <button key={cat} onClick={() => setCategoriaFiltro(cat)} style={{ flexShrink: 0, padding: "6px 14px", borderRadius: 20, border: "1px solid " + (categoriaFiltro === cat ? COLORS.orange : COLORS.border), background: categoriaFiltro === cat ? COLORS.orangeGlow : "transparent", color: categoriaFiltro === cat ? COLORS.orange : COLORS.muted, fontSize: 12, cursor: "pointer", fontWeight: categoriaFiltro === cat ? 700 : 400 }}>{cat}</button>
@@ -484,14 +475,12 @@ function Radar({ user, perfil, showToast }) {
         </div>
       )}
 
-      {/* EMERGENCIA */}
       {radarTab === "emergencia" && (
         <div>
           <div style={{ marginBottom: 16 }}>
             <div style={{ color: COLORS.red, fontWeight: 800, fontSize: 20 }}>Modo emergencia 🆘</div>
             <div style={{ color: COLORS.muted, fontSize: 13, marginTop: 4 }}>Guía rápida para situaciones comunes. Toca tu situación.</div>
           </div>
-
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
             {emergencias.map(e => (
               <button key={e.id} onClick={() => { setEmergenciaActiva(e); setAlertaEnviada(false); }} style={{ background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 14, padding: 16, cursor: "pointer", textAlign: "left" }}>
@@ -500,13 +489,10 @@ function Radar({ user, perfil, showToast }) {
               </button>
             ))}
           </div>
-
           <div style={{ background: "#0A1A0A", border: "1px solid " + COLORS.green + "44", borderRadius: 14, padding: 14 }}>
             <div style={{ color: COLORS.green, fontWeight: 700, fontSize: 13, marginBottom: 4 }}>⚠️ Importante</div>
             <div style={{ color: COLORS.muted, fontSize: 12, lineHeight: 1.6 }}>En caso de emergencia médica real, llama al 911. Esta sección es una guía de apoyo para situaciones comunes en moto.</div>
           </div>
-
-          {/* Modal emergencia */}
           {emergenciaActiva && (
             <div style={{ position: "fixed", inset: 0, background: "#000000CC", zIndex: 300, display: "flex", alignItems: "flex-end" }} onClick={() => setEmergenciaActiva(null)}>
               <div style={{ background: COLORS.surface, borderRadius: "24px 24px 0 0", width: "100%", maxHeight: "85vh", display: "flex", flexDirection: "column" }} onClick={e => e.stopPropagation()}>
@@ -525,13 +511,10 @@ function Radar({ user, perfil, showToast }) {
                       <div style={{ color: COLORS.text, fontSize: 14, lineHeight: 1.5, paddingTop: 4 }}>{paso}</div>
                     </div>
                   ))}
-
                   <div style={{ background: "#1A0000", border: "1px solid " + COLORS.red + "55", borderRadius: 14, padding: 16, marginTop: 8 }}>
                     <div style={{ color: COLORS.red, fontWeight: 800, fontSize: 14, marginBottom: 8 }}>📡 Alertar a Radashis cercanos</div>
                     <div style={{ color: COLORS.muted, fontSize: 13, marginBottom: 12 }}>
-                      {alertaEnviada
-                        ? "✅ Alerta enviada. Los Radashis cercanos pueden ver tu situación y ofrecerte ayuda."
-                        : "Manda una alerta a los moteros de la comunidad que estén cerca. Alguien puede ayudarte."}
+                      {alertaEnviada ? "✅ Alerta enviada. Los Radashis cercanos pueden ver tu situación y ofrecerte ayuda." : "Manda una alerta a los moteros de la comunidad que estén cerca. Alguien puede ayudarte."}
                     </div>
                     {!alertaEnviada && (
                       <button onClick={() => enviarAlerta(emergenciaActiva)} disabled={enviandoAlerta} style={{ width: "100%", background: COLORS.red, border: "none", borderRadius: 12, padding: "12px", color: "#fff", fontWeight: 900, fontSize: 14, cursor: "pointer" }}>
@@ -552,7 +535,6 @@ function Radar({ user, perfil, showToast }) {
   );
 }
 
-// ── APP PRINCIPAL ──────────────────────────────────────────────
 export default function RadashiApp({ user, onLogout }) {
   const [tab, setTab] = useState("feed");
   const [toast, setToast] = useState(null);
@@ -560,7 +542,7 @@ export default function RadashiApp({ user, onLogout }) {
   const [editando, setEditando] = useState(false);
   const [perfil, setPerfil] = useState({});
   const [visor, setVisor] = useState(null);
-  const [chats, setChats] = useState({
+  const [chats] = useState({
     1: [{ from: "them", text: "Hey! Vi que estás en Cuautitlán también", time: "10:14" }, { from: "me", text: "Sí! Tienes CB500 verdad?", time: "10:16" }],
     3: [{ from: "them", text: "Hola! Vi que también eres del Clan", time: "ayer" }, { from: "me", text: "Sí! Ya viste la clase de frenos?", time: "ayer" }],
   });
@@ -578,7 +560,6 @@ export default function RadashiApp({ user, onLogout }) {
 
   const handleSend = () => {
     if (!msg.trim() || !chatUser) return;
-    setChats(c => ({ ...c, [chatUser.id]: [...(c[chatUser.id] || []), { from: "me", text: msg, time: "ahora" }] }));
     setMsg("");
   };
 
