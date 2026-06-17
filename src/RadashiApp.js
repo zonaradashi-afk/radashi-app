@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { db, storage } from "./firebase";
 import { doc, setDoc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import MiMoto from "./MiMoto";
 
 const COLORS = {
   bg: "#0A0A0A", surface: "#141414", card: "#1A1A1A",
@@ -410,24 +411,16 @@ export default function RadashiApp({ user, onLogout }) {
 
         {tab === "perfil" && (
           <div>
-            <div style={{ background: COLORS.card, borderRadius: 18, border: "1px solid " + COLORS.border, padding: 20, marginBottom: 16, textAlign: "center" }}>
-              <Avatar foto={perfil.foto} size={90} />
-              <div style={{ color: COLORS.text, fontWeight: 900, fontSize: 22, marginTop: 12 }}>{perfil.nombre || "Sin nombre"}</div>
-              <div style={{ color: COLORS.muted, fontSize: 13, marginBottom: 4 }}>{user?.email}</div>
-              {perfil.ciudad && <div style={{ color: COLORS.muted, fontSize: 13 }}>📍 {perfil.ciudad}</div>}
-              {perfil.bio && <div style={{ color: COLORS.text, fontSize: 14, marginTop: 8, fontStyle: "italic" }}>"{perfil.bio}"</div>}
-              <button onClick={() => setEditando(true)} style={{ marginTop: 16, background: COLORS.orangeGlow, border: "1px solid " + COLORS.orange, color: COLORS.orange, borderRadius: 20, padding: "8px 24px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>✏️ Editar perfil</button>
+            <div style={{ background: COLORS.card, borderRadius: 18, border: "1px solid " + COLORS.border, padding: 16, marginBottom: 16, display: "flex", alignItems: "center", gap: 14 }}>
+              <Avatar foto={perfil.foto} size={56} />
+              <div style={{ flex: 1 }}>
+                <div style={{ color: COLORS.text, fontWeight: 900, fontSize: 18 }}>{perfil.nombre || "Sin nombre"}</div>
+                <div style={{ color: COLORS.muted, fontSize: 12 }}>{user?.email}</div>
+                {perfil.ciudad && <div style={{ color: COLORS.muted, fontSize: 12 }}>📍 {perfil.ciudad}</div>}
+              </div>
+              <button onClick={() => setEditando(true)} style={{ background: COLORS.orangeGlow, border: "1px solid " + COLORS.orange, color: COLORS.orange, borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>✏️ Editar</button>
             </div>
-            <div style={{ background: COLORS.card, borderRadius: 16, border: "1px solid " + COLORS.border, padding: 16 }}>
-              <div style={{ color: COLORS.text, fontWeight: 800, fontSize: 15, marginBottom: 12 }}>🏍️ Mi moto</div>
-              {[{ label: "Marca", val: perfil.marca }, { label: "Modelo", val: perfil.modelo }, { label: "Año", val: perfil.anio }].map((f, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: i < 2 ? "1px solid " + COLORS.border : "none" }}>
-                  <span style={{ color: COLORS.muted, fontSize: 13 }}>{f.label}</span>
-                  <span style={{ color: f.val ? COLORS.orange : COLORS.muted, fontSize: 13, fontWeight: f.val ? 600 : 400 }}>{f.val || "Sin registrar"}</span>
-                </div>
-              ))}
-              {!perfil.marca && <button onClick={() => setEditando(true)} style={{ width: "100%", marginTop: 12, background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", border: "none", borderRadius: 12, padding: 10, color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>+ Registrar mi moto</button>}
-            </div>
+            <MiMoto user={user} />
           </div>
         )}
       </div>
