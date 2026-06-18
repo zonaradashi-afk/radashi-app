@@ -5,20 +5,34 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import MiMoto from "./MiMoto";
 
 const C = {
-  bg: "#0A0A0A",
-  surface: "#141414",
-  card: "#1A1A1A",
+  bg: "#F5F5F0",
+  surface: "#FFFFFF",
+  card: "#F0EFE8",
   orange: "#ffa22e",
   orangeGlow: "#ffa22e18",
   red: "#980604",
-  redGlow: "#98060418",
-  gold: "#ffa22e",
-  text: "#F0F0F0",
+  redGlow: "#98060412",
+  text: "#1A1A1A",
   muted: "#888888",
-  border: "#2A2A2A",
+  border: "#E0DED8",
   green: "#22C55E",
   greenGlow: "#22C55E18",
 };
+
+const GEAR_SVG_LIGHT = `
+<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 40 40' fill='none'>
+  <circle cx='20' cy='20' r='18' fill='none' stroke='%23980604' stroke-width='0.4' opacity='0.15'/>
+  <circle cx='20' cy='20' r='11' fill='none' stroke='%23ffa22e' stroke-width='0.4' stroke-dasharray='2 2' opacity='0.2'/>
+  <circle cx='20' cy='20' r='4' fill='none' stroke='%23980604' stroke-width='0.4' opacity='0.15'/>
+  <rect x='19.3' y='2' width='1.4' height='4' rx='0.7' fill='%23ffa22e' opacity='0.2'/>
+  <rect x='19.3' y='34' width='1.4' height='4' rx='0.7' fill='%23ffa22e' opacity='0.2'/>
+  <rect x='2' y='19.3' width='4' height='1.4' rx='0.7' fill='%23ffa22e' opacity='0.2'/>
+  <rect x='34' y='19.3' width='4' height='1.4' rx='0.7' fill='%23ffa22e' opacity='0.2'/>
+  <rect x='27' y='5' width='1.4' height='3.5' rx='0.7' fill='%23980604' opacity='0.15' transform='rotate(45 27.7 6.75)'/>
+  <rect x='5' y='27' width='1.4' height='3.5' rx='0.7' fill='%23980604' opacity='0.15' transform='rotate(45 5.7 28.75)'/>
+  <rect x='27' y='27' width='1.4' height='3.5' rx='0.7' fill='%23980604' opacity='0.15' transform='rotate(-45 27.7 28.75)'/>
+  <rect x='5' y='5' width='1.4' height='3.5' rx='0.7' fill='%23980604' opacity='0.15' transform='rotate(-45 5.7 6.75)'/>
+</svg>`;
 
 const nearbyUsers = [
   { id: 1, name: "TonoMotos", zona: "Cuautitlán", km: 2, avatar: "🏍️", clan: true, moto: "Honda CB500F 2022", bio: "Fanático del mantenimiento preventivo." },
@@ -60,41 +74,44 @@ const guias = {
 const categoriasFiltro = ["Todos", "Taller", "Gasolina", "Vulcanizadora", "Refaccionaria", "Punto de reunión", "Evento", "Aliado Radashi"];
 const SOPORTE_WA = "5610246564";
 
-// ── ENGRANE SVG ──────────────────────────────────────────────
-function Gear({ size = 40, style = {} }) {
+const gearBg = {
+  backgroundImage: `url("data:image/svg+xml,${GEAR_SVG_LIGHT}")`,
+  backgroundSize: "80px 80px",
+  backgroundRepeat: "repeat",
+};
+
+function Gear({ size = 40 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" style={style}>
-      <circle cx="20" cy="20" r="18" fill="#140800" stroke={C.red} strokeWidth="1.5" />
-      <circle cx="20" cy="20" r="11" fill="none" stroke={C.orange} strokeWidth="1" strokeDasharray="2 2" />
-      <circle cx="20" cy="20" r="6" fill={C.red} />
-      <circle cx="20" cy="20" r="2.5" fill={C.orange} />
-      <rect x="19" y="2" width="2" height="5" rx="1" fill={C.orange} />
-      <rect x="19" y="33" width="2" height="5" rx="1" fill={C.orange} />
-      <rect x="2" y="19" width="5" height="2" rx="1" fill={C.orange} />
-      <rect x="33" y="19" width="5" height="2" rx="1" fill={C.orange} />
-      <rect x="27" y="5" width="2" height="4" rx="1" fill={C.red} transform="rotate(45 28 7)" />
-      <rect x="5" y="27" width="2" height="4" rx="1" fill={C.red} transform="rotate(45 6 29)" />
-      <rect x="27" y="27" width="2" height="4" rx="1" fill={C.red} transform="rotate(-45 28 29)" />
-      <rect x="5" y="5" width="2" height="4" rx="1" fill={C.red} transform="rotate(-45 6 7)" />
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
+      <circle cx="20" cy="20" r="18" fill="#FFF3E0" stroke="#980604" strokeWidth="1.5" />
+      <circle cx="20" cy="20" r="11" fill="none" stroke="#ffa22e" strokeWidth="1" strokeDasharray="2 2" />
+      <circle cx="20" cy="20" r="6" fill="#980604" />
+      <circle cx="20" cy="20" r="2.5" fill="#ffa22e" />
+      <rect x="19" y="2" width="2" height="5" rx="1" fill="#ffa22e" />
+      <rect x="19" y="33" width="2" height="5" rx="1" fill="#ffa22e" />
+      <rect x="2" y="19" width="5" height="2" rx="1" fill="#ffa22e" />
+      <rect x="33" y="19" width="5" height="2" rx="1" fill="#ffa22e" />
+      <rect x="27" y="5" width="2" height="4" rx="1" fill="#980604" transform="rotate(45 28 7)" />
+      <rect x="5" y="27" width="2" height="4" rx="1" fill="#980604" transform="rotate(45 6 29)" />
+      <rect x="27" y="27" width="2" height="4" rx="1" fill="#980604" transform="rotate(-45 28 29)" />
+      <rect x="5" y="5" width="2" height="4" rx="1" fill="#980604" transform="rotate(-45 6 7)" />
     </svg>
   );
 }
 
-// ── SECTION HEADER ───────────────────────────────────────────
 function SectionBar({ label }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, marginTop: 4 }}>
       <div style={{ width: 20, height: 2, background: C.red }} />
       <div style={{ color: C.orange, fontSize: 10, fontWeight: 800, letterSpacing: 2 }}>{label}</div>
-      <div style={{ flex: 1, height: 1, background: C.surface }} />
+      <div style={{ flex: 1, height: 1, background: C.border }} />
     </div>
   );
 }
 
-// ── HEADER ───────────────────────────────────────────────────
 function AppHeader({ user, perfil, onLogout, subtitulo }) {
   return (
-    <div style={{ background: C.bg, borderBottom: `2px solid ${C.red}`, padding: "14px 16px 12px", position: "sticky", top: 0, zIndex: 100, display: "flex", alignItems: "center", gap: 10 }}>
+    <div style={{ background: C.surface, borderBottom: `2px solid ${C.red}`, padding: "14px 16px 12px", position: "sticky", top: 0, zIndex: 100, display: "flex", alignItems: "center", gap: 10, boxShadow: "0 2px 8px #00000012" }}>
       <Gear size={40} />
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 16, fontWeight: 900, letterSpacing: 2, lineHeight: 1 }}>
@@ -103,35 +120,32 @@ function AppHeader({ user, perfil, onLogout, subtitulo }) {
         </div>
         <div style={{ color: C.muted, fontSize: 10, marginTop: 2 }}>{subtitulo || perfil.nombre || user?.email}</div>
       </div>
-      <button onClick={onLogout} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: "5px 12px", color: C.muted, fontSize: 10, cursor: "pointer" }}>Salir</button>
+      <button onClick={onLogout} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: "5px 12px", color: C.muted, fontSize: 10, cursor: "pointer" }}>Salir</button>
     </div>
   );
 }
 
-// ── AVATAR ───────────────────────────────────────────────────
 function Avatar({ foto, size = 48, emoji = "😎", accent = C.orange }) {
   if (foto) return <img src={foto} alt="perfil" style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", border: `2px solid ${accent}`, flexShrink: 0 }} />;
   return (
-    <div style={{ width: size, height: size, borderRadius: "50%", background: C.surface, border: `2px solid ${accent}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.45, flexShrink: 0 }}>
+    <div style={{ width: size, height: size, borderRadius: "50%", background: accent === C.orange ? "#FFF3E0" : "#FFF0F0", border: `2px solid ${accent}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.45, flexShrink: 0 }}>
       {emoji}
     </div>
   );
 }
 
-// ── CLAN BADGE ───────────────────────────────────────────────
 function ClanBadge() {
   return <span style={{ background: C.red, color: C.orange, fontSize: 8, padding: "1px 5px", borderRadius: 6, fontWeight: 800, letterSpacing: 1 }}>CLAN</span>;
 }
-// ── BTN ─────────────────────────────────────────────────────
+
 function BtnMain({ children, onClick, disabled, red, style = {} }) {
   return (
-    <button onClick={onClick} disabled={disabled} style={{ width: "100%", background: red ? C.red : C.orange, border: "none", borderRadius: 10, padding: 13, color: red ? C.orange : C.bg, fontWeight: 900, fontSize: 13, letterSpacing: 1, cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.5 : 1, ...style }}>
+    <button onClick={onClick} disabled={disabled} style={{ width: "100%", background: red ? C.red : C.orange, border: "none", borderRadius: 10, padding: 13, color: red ? C.orange : "#fff", fontWeight: 900, fontSize: 13, letterSpacing: 1, cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.5 : 1, boxShadow: red ? `0 2px 8px ${C.red}44` : `0 2px 8px ${C.orange}44`, ...style }}>
       {children}
     </button>
   );
 }
 
-// ── CHAT DE AYUDA ────────────────────────────────────────────
 function ChatAyuda({ chatId, user, perfil, alerta, onCerrar, onResuelto }) {
   const [mensajes, setMensajes] = useState([]);
   const [texto, setTexto] = useState("");
@@ -156,8 +170,7 @@ function ChatAyuda({ chatId, user, perfil, alerta, onCerrar, onResuelto }) {
         texto: msg, userId: user.uid,
         userNombre: perfil.nombre || user.email,
         userFoto: perfil.foto || null,
-        tipo: "texto",
-        createdAt: serverTimestamp(),
+        tipo: "texto", createdAt: serverTimestamp(),
       });
       setTexto("");
     } catch (e) { console.error(e); }
@@ -171,11 +184,8 @@ function ChatAyuda({ chatId, user, perfil, alerta, onCerrar, onResuelto }) {
       const url = `https://maps.google.com/?q=${latitude},${longitude}`;
       await addDoc(collection(db, "chats", chatId, "mensajes"), {
         texto: `📍 ${perfil.nombre || "Yo"} compartió su ubicación aproximada`,
-        url, userId: user.uid,
-        userNombre: perfil.nombre || user.email,
-        userFoto: perfil.foto || null,
-        tipo: "ubicacion",
-        createdAt: serverTimestamp(),
+        url, userId: user.uid, userNombre: perfil.nombre || user.email,
+        userFoto: perfil.foto || null, tipo: "ubicacion", createdAt: serverTimestamp(),
       });
     });
   };
@@ -184,8 +194,7 @@ function ChatAyuda({ chatId, user, perfil, alerta, onCerrar, onResuelto }) {
     await addDoc(collection(db, "chats", chatId, "mensajes"), {
       texto: `📞 ${perfil.nombre || "Yo"} compartió su número: ${perfil.telefono || "No registrado"}`,
       userId: user.uid, userNombre: perfil.nombre || user.email,
-      userFoto: perfil.foto || null, tipo: "numero",
-      createdAt: serverTimestamp(),
+      userFoto: perfil.foto || null, tipo: "numero", createdAt: serverTimestamp(),
     });
   };
 
@@ -194,8 +203,7 @@ function ChatAyuda({ chatId, user, perfil, alerta, onCerrar, onResuelto }) {
       await updateDoc(doc(db, "emergencias", alerta.id), { activa: false, resuelta: true });
       await addDoc(collection(db, "chats", chatId, "mensajes"), {
         texto: "✅ Emergencia resuelta. ¡Gracias a todos!",
-        userId: "sistema", userNombre: "Sistema", tipo: "sistema",
-        createdAt: serverTimestamp(),
+        userId: "sistema", userNombre: "Sistema", tipo: "sistema", createdAt: serverTimestamp(),
       });
       if (onResuelto) onResuelto();
     } catch (e) { console.error(e); }
@@ -210,12 +218,12 @@ function ChatAyuda({ chatId, user, perfil, alerta, onCerrar, onResuelto }) {
   const esMio = (msg) => msg.userId === user.uid;
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: C.bg, zIndex: 500, display: "flex", flexDirection: "column", fontFamily: "system-ui, sans-serif" }}>
-      <div style={{ background: C.bg, borderBottom: `2px solid ${C.red}`, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-        <button onClick={onCerrar} style={{ background: "none", border: "none", color: C.orange, fontSize: 22, cursor: "pointer" }}>←</button>
+    <div style={{ position: "fixed", inset: 0, background: C.bg, zIndex: 500, display: "flex", flexDirection: "column", fontFamily: "system-ui, sans-serif", ...gearBg }}>
+      <div style={{ background: C.surface, borderBottom: `2px solid ${C.red}`, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 2px 8px #00000012" }}>
+        <button onClick={onCerrar} style={{ background: "none", border: "none", color: C.red, fontSize: 22, cursor: "pointer" }}>←</button>
         <Gear size={32} />
         <div style={{ flex: 1 }}>
-          <div style={{ color: C.red, fontWeight: 800, fontSize: 13 }}>🆘 CHAT DE AYUDA</div>
+          <div style={{ color: C.red, fontWeight: 800, fontSize: 13, letterSpacing: 1 }}>🆘 CHAT DE AYUDA</div>
           <div style={{ color: C.muted, fontSize: 11 }}>{alerta.tipo} · {alerta.zona}</div>
         </div>
         {alerta.userId === user.uid && (
@@ -233,9 +241,9 @@ function ChatAyuda({ chatId, user, perfil, alerta, onCerrar, onResuelto }) {
                 {!esMio(m) && <Avatar foto={m.userFoto} size={28} />}
                 <div style={{ maxWidth: "75%" }}>
                   {!esMio(m) && <div style={{ color: C.orange, fontSize: 11, fontWeight: 700, marginBottom: 3 }}>{m.userNombre}</div>}
-                  <div style={{ background: esMio(m) ? C.orange : C.surface, color: esMio(m) ? C.bg : C.text, padding: "10px 14px", borderRadius: esMio(m) ? "18px 18px 4px 18px" : "18px 18px 18px 4px", fontSize: 14, border: esMio(m) ? "none" : `1px solid ${C.border}` }}>
+                  <div style={{ background: esMio(m) ? C.orange : C.surface, color: esMio(m) ? "#fff" : C.text, padding: "10px 14px", borderRadius: esMio(m) ? "18px 18px 4px 18px" : "18px 18px 18px 4px", fontSize: 14, border: esMio(m) ? "none" : `1px solid ${C.border}`, boxShadow: "0 1px 4px #00000010" }}>
                     {m.tipo === "ubicacion" ? (
-                      <div>{m.texto}<br /><a href={m.url} target="_blank" rel="noopener noreferrer" style={{ color: esMio(m) ? C.bg : C.orange, fontSize: 12, opacity: 0.8 }}>Ver en Google Maps ↗</a></div>
+                      <div>{m.texto}<br /><a href={m.url} target="_blank" rel="noopener noreferrer" style={{ color: esMio(m) ? "#fff" : C.orange, fontSize: 12 }}>Ver en Google Maps ↗</a></div>
                     ) : m.texto}
                     <div style={{ fontSize: 10, opacity: 0.5, marginTop: 4, textAlign: "right" }}>{formatTime(m.createdAt)}</div>
                   </div>
@@ -247,15 +255,12 @@ function ChatAyuda({ chatId, user, perfil, alerta, onCerrar, onResuelto }) {
         <div ref={bottomRef} />
       </div>
 
-      <div style={{ background: C.surface, borderTop: `1px solid ${C.border}`, padding: "10px 16px 0" }}>
+      <div style={{ background: C.surface, borderTop: `1px solid ${C.border}`, padding: "10px 16px 0", boxShadow: "0 -2px 8px #00000010" }}>
         <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 10 }}>
-          {[
-            { label: "📍 Mi ubicación", action: compartirUbicacion },
-            { label: "📞 Mi número", action: compartirNumero },
-          ].map((b, i) => (
+          {[{ label: "📍 Mi ubicación", action: compartirUbicacion }, { label: "📞 Mi número", action: compartirNumero }].map((b, i) => (
             <button key={i} onClick={b.action} style={{ flexShrink: 0, background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: "6px 14px", color: C.text, fontSize: 12, cursor: "pointer" }}>{b.label}</button>
           ))}
-          <a href={"https://wa.me/" + SOPORTE_WA} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0, background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: "6px 14px", color: C.green, fontSize: 12, cursor: "pointer", textDecoration: "none" }}>🟢 Soporte</a>
+          <a href={"https://wa.me/" + SOPORTE_WA} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0, background: "#F0FFF4", border: `1px solid ${C.green}`, borderRadius: 20, padding: "6px 14px", color: C.green, fontSize: 12, cursor: "pointer", textDecoration: "none" }}>🟢 Soporte</a>
           {alerta.userId === user.uid && (
             <button onClick={marcarResuelto} style={{ flexShrink: 0, background: C.greenGlow, border: `1px solid ${C.green}`, borderRadius: 20, padding: "6px 14px", color: C.green, fontSize: 12, cursor: "pointer", fontWeight: 700 }}>✅ Ya estoy bien</button>
           )}
@@ -264,13 +269,12 @@ function ChatAyuda({ chatId, user, perfil, alerta, onCerrar, onResuelto }) {
 
       <div style={{ background: C.surface, padding: "8px 16px 28px", display: "flex", gap: 10, alignItems: "center" }}>
         <input value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => e.key === "Enter" && enviar()} placeholder="Escribe algo..." style={{ flex: 1, background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: "10px 16px", color: C.text, fontSize: 14, outline: "none" }} />
-        <button onClick={() => enviar()} disabled={loading || !texto.trim()} style={{ width: 42, height: 42, borderRadius: "50%", background: texto.trim() ? C.orange : C.card, border: "none", cursor: "pointer", fontSize: 18, color: C.bg }}>↑</button>
+        <button onClick={() => enviar()} disabled={loading || !texto.trim()} style={{ width: 42, height: 42, borderRadius: "50%", background: texto.trim() ? C.orange : C.card, border: "none", cursor: "pointer", fontSize: 18, color: "#fff" }}>↑</button>
       </div>
     </div>
   );
 }
 
-// ── PEDIR AYUDA ──────────────────────────────────────────────
 function PedirAyuda({ user, perfil, onCerrar, onAlertaCreada }) {
   const [paso, setPaso] = useState(1);
   const [tipo, setTipo] = useState(null);
@@ -304,8 +308,8 @@ function PedirAyuda({ user, perfil, onCerrar, onAlertaCreada }) {
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#000000CC", zIndex: 400, display: "flex", alignItems: "flex-end" }} onClick={onCerrar}>
-      <div style={{ background: C.surface, borderRadius: "20px 20px 0 0", width: "100%", maxHeight: "85vh", display: "flex", flexDirection: "column", borderTop: `2px solid ${C.red}` }} onClick={e => e.stopPropagation()}>
+    <div style={{ position: "fixed", inset: 0, background: "#00000066", zIndex: 400, display: "flex", alignItems: "flex-end" }} onClick={onCerrar}>
+      <div style={{ background: C.surface, borderRadius: "20px 20px 0 0", width: "100%", maxHeight: "85vh", display: "flex", flexDirection: "column", borderTop: `3px solid ${C.red}` }} onClick={e => e.stopPropagation()}>
         <div style={{ padding: "18px 20px 14px", borderBottom: `1px solid ${C.border}` }}>
           <div style={{ width: 36, height: 3, background: C.border, borderRadius: 2, margin: "0 auto 14px" }} />
           <div style={{ color: C.red, fontWeight: 900, fontSize: 17, letterSpacing: 1 }}>{paso === 1 ? "🆘 ¿QUÉ PASÓ?" : "📍 ¿DÓNDE ESTÁS?"}</div>
@@ -315,7 +319,7 @@ function PedirAyuda({ user, perfil, onCerrar, onAlertaCreada }) {
           {paso === 1 && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               {tiposEmergencia.map(t => (
-                <button key={t.id} onClick={() => { setTipo(t); setPaso(2); }} style={{ background: C.card, border: `1px solid ${C.border}`, borderTop: `2px solid ${C.red}`, borderRadius: 10, padding: 14, cursor: "pointer", textAlign: "left" }}>
+                <button key={t.id} onClick={() => { setTipo(t); setPaso(2); }} style={{ background: C.card, border: `1px solid ${C.border}`, borderTop: `2px solid ${C.red}`, borderRadius: 10, padding: 14, cursor: "pointer", textAlign: "left", boxShadow: "0 1px 4px #00000008" }}>
                   <div style={{ fontSize: 26, marginBottom: 6 }}>{t.icon}</div>
                   <div style={{ color: C.text, fontWeight: 700, fontSize: 12 }}>{t.label}</div>
                 </button>
@@ -355,7 +359,6 @@ function PedirAyuda({ user, perfil, onCerrar, onAlertaCreada }) {
   );
 }
 
-// ── EDITAR PERFIL ────────────────────────────────────────────
 function EditarPerfil({ user, perfil, onGuardar, onCancelar }) {
   const [nombre, setNombre] = useState(perfil.nombre || "");
   const [ciudad, setCiudad] = useState(perfil.ciudad || "");
@@ -403,9 +406,9 @@ function EditarPerfil({ user, perfil, onGuardar, onCancelar }) {
   ];
 
   return (
-    <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "system-ui, sans-serif" }}>
-      <div style={{ background: C.bg, borderBottom: `2px solid ${C.red}`, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-        <button onClick={onCancelar} style={{ background: "none", border: "none", color: C.orange, fontSize: 22, cursor: "pointer" }}>←</button>
+    <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "system-ui, sans-serif", ...gearBg }}>
+      <div style={{ background: C.surface, borderBottom: `2px solid ${C.red}`, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 8px #00000012" }}>
+        <button onClick={onCancelar} style={{ background: "none", border: "none", color: C.red, fontSize: 22, cursor: "pointer" }}>←</button>
         <Gear size={32} />
         <div style={{ color: C.text, fontWeight: 900, fontSize: 16, letterSpacing: 1 }}>EDITAR PERFIL</div>
       </div>
@@ -413,15 +416,15 @@ function EditarPerfil({ user, perfil, onGuardar, onCancelar }) {
         <div style={{ textAlign: "center", marginBottom: 24 }}>
           <div style={{ position: "relative", display: "inline-block" }}>
             <Avatar foto={foto} size={90} />
-            <button onClick={() => fileRef.current.click()} style={{ position: "absolute", bottom: 0, right: 0, width: 28, height: 28, borderRadius: "50%", background: C.orange, border: `2px solid ${C.bg}`, color: C.bg, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>📷</button>
+            <button onClick={() => fileRef.current.click()} style={{ position: "absolute", bottom: 0, right: 0, width: 28, height: 28, borderRadius: "50%", background: C.orange, border: `2px solid ${C.bg}`, color: "#fff", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>📷</button>
           </div>
           <input ref={fileRef} type="file" accept="image/*" onChange={handleFoto} style={{ display: "none" }} />
           <div style={{ color: C.muted, fontSize: 11, marginTop: 8 }}>{uploadingFoto ? "Subiendo foto..." : "Toca 📷 para cambiar foto"}</div>
         </div>
         {campos.map((c, i) => (
           <div key={i} style={{ marginBottom: 14 }}>
-            <div style={{ color: C.orange, fontSize: 10, marginBottom: 5, fontWeight: 800, letterSpacing: 1 }}>{c.label.toUpperCase()}</div>
-            <input value={c.val} onChange={e => c.set(e.target.value)} placeholder={c.placeholder} style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 14px", color: C.text, fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+            <div style={{ color: C.red, fontSize: 10, marginBottom: 5, fontWeight: 800, letterSpacing: 1 }}>{c.label.toUpperCase()}</div>
+            <input value={c.val} onChange={e => c.set(e.target.value)} placeholder={c.placeholder} style={{ width: "100%", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 14px", color: C.text, fontSize: 13, outline: "none", boxSizing: "border-box", boxShadow: "0 1px 4px #00000008" }} />
           </div>
         ))}
         <BtnMain onClick={handleGuardar} disabled={loading || uploadingFoto}>
@@ -432,7 +435,6 @@ function EditarPerfil({ user, perfil, onGuardar, onCancelar }) {
   );
 }
 
-// ── NUEVO POST ───────────────────────────────────────────────
 function NuevoPost({ user, perfil, onCerrar }) {
   const [texto, setTexto] = useState("");
   const [loading, setLoading] = useState(false);
@@ -446,8 +448,7 @@ function NuevoPost({ user, perfil, onCerrar }) {
         userNombre: perfil.nombre || user.email,
         userFoto: perfil.foto || null,
         userMoto: perfil.marca ? perfil.marca + " " + perfil.modelo : null,
-        likes: 0, comentarios: 0,
-        createdAt: serverTimestamp(),
+        likes: 0, comentarios: 0, createdAt: serverTimestamp(),
       });
       onCerrar();
     } catch (e) { console.error(e); }
@@ -455,8 +456,8 @@ function NuevoPost({ user, perfil, onCerrar }) {
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#000000CC", zIndex: 300, display: "flex", alignItems: "flex-end" }} onClick={onCerrar}>
-      <div style={{ background: C.surface, borderRadius: "20px 20px 0 0", width: "100%", padding: 20, borderTop: `2px solid ${C.orange}` }} onClick={e => e.stopPropagation()}>
+    <div style={{ position: "fixed", inset: 0, background: "#00000066", zIndex: 300, display: "flex", alignItems: "flex-end" }} onClick={onCerrar}>
+      <div style={{ background: C.surface, borderRadius: "20px 20px 0 0", width: "100%", padding: 20, borderTop: `3px solid ${C.orange}` }} onClick={e => e.stopPropagation()}>
         <div style={{ width: 36, height: 3, background: C.border, borderRadius: 2, margin: "0 auto 16px" }} />
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 14 }}>
           <Avatar foto={perfil.foto} size={42} />
@@ -470,7 +471,6 @@ function NuevoPost({ user, perfil, onCerrar }) {
   );
 }
 
-// ── COMENTARIOS ──────────────────────────────────────────────
 function Comentarios({ postId, user, perfil, onCerrar }) {
   const [comentarios, setComentarios] = useState([]);
   const [texto, setTexto] = useState("");
@@ -491,8 +491,7 @@ function Comentarios({ postId, user, perfil, onCerrar }) {
       await addDoc(collection(db, "posts", postId, "comentarios"), {
         texto, userId: user.uid,
         userNombre: perfil.nombre || user.email,
-        userFoto: perfil.foto || null,
-        createdAt: serverTimestamp(),
+        userFoto: perfil.foto || null, createdAt: serverTimestamp(),
       });
       await setDoc(doc(db, "posts", postId), { comentarios: comentarios.length + 1 }, { merge: true });
       setTexto("");
@@ -511,8 +510,8 @@ function Comentarios({ postId, user, perfil, onCerrar }) {
   };
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#000000CC", zIndex: 300, display: "flex", alignItems: "flex-end" }} onClick={onCerrar}>
-      <div style={{ background: C.surface, borderRadius: "20px 20px 0 0", width: "100%", maxHeight: "80vh", display: "flex", flexDirection: "column", borderTop: `2px solid ${C.orange}` }} onClick={e => e.stopPropagation()}>
+    <div style={{ position: "fixed", inset: 0, background: "#00000066", zIndex: 300, display: "flex", alignItems: "flex-end" }} onClick={onCerrar}>
+      <div style={{ background: C.surface, borderRadius: "20px 20px 0 0", width: "100%", maxHeight: "80vh", display: "flex", flexDirection: "column", borderTop: `3px solid ${C.orange}` }} onClick={e => e.stopPropagation()}>
         <div style={{ padding: "14px 18px", borderBottom: `1px solid ${C.border}` }}>
           <div style={{ width: 36, height: 3, background: C.border, borderRadius: 2, margin: "0 auto 12px" }} />
           <div style={{ color: C.text, fontWeight: 800, fontSize: 14, letterSpacing: 1 }}>COMENTARIOS 💬</div>
@@ -533,14 +532,13 @@ function Comentarios({ postId, user, perfil, onCerrar }) {
         <div style={{ padding: "10px 14px 28px", borderTop: `1px solid ${C.border}`, display: "flex", gap: 8, alignItems: "center" }}>
           <Avatar foto={perfil.foto} size={34} />
           <input value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => e.key === "Enter" && handleComentar()} placeholder="Escribe un comentario..." style={{ flex: 1, background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: "9px 14px", color: C.text, fontSize: 13, outline: "none" }} />
-          <button onClick={handleComentar} disabled={loading || !texto.trim()} style={{ width: 38, height: 38, borderRadius: "50%", background: texto.trim() ? C.orange : C.card, border: "none", cursor: "pointer", fontSize: 16, color: C.bg }}>↑</button>
+          <button onClick={handleComentar} disabled={loading || !texto.trim()} style={{ width: 38, height: 38, borderRadius: "50%", background: texto.trim() ? C.orange : C.card, border: "none", cursor: "pointer", fontSize: 16, color: "#fff" }}>↑</button>
         </div>
       </div>
     </div>
   );
 }
 
-// ── FEED ─────────────────────────────────────────────────────
 function Feed({ user, perfil }) {
   const [posts, setPosts] = useState([]);
   const [nuevoPost, setNuevoPost] = useState(false);
@@ -567,9 +565,9 @@ function Feed({ user, perfil }) {
 
   return (
     <div>
-      <div onClick={() => setNuevoPost(true)} style={{ background: C.surface, borderRadius: 10, border: `1px solid ${C.border}`, borderTop: `2px solid ${C.orange}`, padding: 12, marginBottom: 12, display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+      <div onClick={() => setNuevoPost(true)} style={{ background: C.surface, borderRadius: 10, border: `1px solid ${C.border}`, borderTop: `2px solid ${C.orange}`, padding: 12, marginBottom: 12, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", boxShadow: "0 1px 4px #00000008" }}>
         <Avatar foto={perfil.foto} size={38} />
-        <div style={{ flex: 1, background: C.bg, borderRadius: 20, padding: "9px 14px", color: C.muted, fontSize: 13 }}>¿Qué le pasa a tu moto hoy? 🏍️</div>
+        <div style={{ flex: 1, background: C.card, borderRadius: 20, padding: "9px 14px", color: C.muted, fontSize: 13 }}>¿Qué le pasa a tu moto hoy? 🏍️</div>
       </div>
 
       {posts.length === 0 && (
@@ -581,7 +579,7 @@ function Feed({ user, perfil }) {
       )}
 
       {posts.map(p => (
-        <div key={p.id} style={{ background: C.surface, borderRadius: 10, border: `1px solid ${C.border}`, borderTop: `2px solid ${p.userId === user.uid ? C.orange : C.red}`, marginBottom: 10, overflow: "hidden" }}>
+        <div key={p.id} style={{ background: C.surface, borderRadius: 10, border: `1px solid ${C.border}`, borderTop: `2px solid ${p.userId === user.uid ? C.orange : C.red}`, marginBottom: 10, overflow: "hidden", boxShadow: "0 1px 4px #00000008" }}>
           <div style={{ padding: "12px 12px 8px", display: "flex", alignItems: "center", gap: 8 }}>
             <Avatar foto={p.userFoto} size={40} accent={p.userId === user.uid ? C.orange : C.red} />
             <div style={{ flex: 1 }}>
@@ -595,7 +593,7 @@ function Feed({ user, perfil }) {
           <div style={{ padding: "0 12px 10px" }}>
             <p style={{ color: C.text, fontSize: 13, lineHeight: 1.5, margin: 0 }}>{p.texto}</p>
           </div>
-          <div style={{ display: "flex", padding: "8px 12px", borderTop: `1px solid ${C.border}`, gap: 16 }}>
+          <div style={{ display: "flex", padding: "8px 12px", borderTop: `1px solid ${C.border}`, gap: 16, background: C.card }}>
             <button onClick={async () => {
               const nuevoLiked = !liked[p.id];
               setLiked(l => ({ ...l, [p.id]: nuevoLiked }));
@@ -617,14 +615,13 @@ function Feed({ user, perfil }) {
   );
 }
 
-// ── VISOR ────────────────────────────────────────────────────
 function Visor({ url, titulo, onCerrar }) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
   return (
-    <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "system-ui, sans-serif", display: "flex", flexDirection: "column" }}>
-      <div style={{ background: C.bg, borderBottom: `2px solid ${C.red}`, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-        <button onClick={onCerrar} style={{ background: "none", border: "none", color: C.orange, fontSize: 22, cursor: "pointer", flexShrink: 0 }}>←</button>
+    <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "system-ui, sans-serif", display: "flex", flexDirection: "column", ...gearBg }}>
+      <div style={{ background: C.surface, borderBottom: `2px solid ${C.red}`, padding: "14px 16px", display: "flex", alignItems: "center", gap: 10, flexShrink: 0, boxShadow: "0 2px 8px #00000012" }}>
+        <button onClick={onCerrar} style={{ background: "none", border: "none", color: C.red, fontSize: 22, cursor: "pointer", flexShrink: 0 }}>←</button>
         <Gear size={32} />
         <div style={{ color: C.text, fontWeight: 700, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{titulo}</div>
         <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: C.muted, fontSize: 12, flexShrink: 0, textDecoration: "none" }}>↗</a>
@@ -634,7 +631,7 @@ function Visor({ url, titulo, onCerrar }) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 40, flexDirection: "column", gap: 16, flex: 1 }}>
           <div style={{ fontSize: 44 }}>🔒</div>
           <div style={{ color: C.text, fontWeight: 700, fontSize: 15, textAlign: "center" }}>Esta página no permite abrirse aquí</div>
-          <a href={url} target="_blank" rel="noopener noreferrer" style={{ background: C.orange, borderRadius: 10, padding: "12px 28px", color: C.bg, fontWeight: 900, fontSize: 14, textDecoration: "none", letterSpacing: 1 }}>ABRIR EN NAVEGADOR ↗</a>
+          <a href={url} target="_blank" rel="noopener noreferrer" style={{ background: C.orange, borderRadius: 10, padding: "12px 28px", color: "#fff", fontWeight: 900, fontSize: 14, textDecoration: "none", letterSpacing: 1 }}>ABRIR EN NAVEGADOR ↗</a>
         </div>
       )}
       <iframe src={url} style={{ flex: 1, border: "none", width: "100%", minHeight: "calc(100vh - 60px)", display: error ? "none" : "block" }} title={titulo} onLoad={() => setCargando(false)} onError={() => { setCargando(false); setError(true); }} />
@@ -642,7 +639,6 @@ function Visor({ url, titulo, onCerrar }) {
   );
 }
 
-// ── RADAR ────────────────────────────────────────────────────
 function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, setChatGlobal }) {
   const [radarTab, setRadarTab] = useState("radashis");
   const [selected, setSelected] = useState(null);
@@ -673,8 +669,7 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, set
       await addDoc(collection(db, "chats", chatId, "mensajes"), {
         texto: `Hola, soy ${perfil.nombre || user.email}. Vi tu alerta de "${alerta.tipo}" en ${alerta.zona}. ¿Todavía necesitas ayuda?`,
         userId: user.uid, userNombre: perfil.nombre || user.email,
-        userFoto: perfil.foto || null, tipo: "texto",
-        createdAt: serverTimestamp(),
+        userFoto: perfil.foto || null, tipo: "texto", createdAt: serverTimestamp(),
       });
       await setDoc(doc(db, "notificaciones", alerta.userId), {
         chatId, alertaId: alerta.id, tipo: alerta.tipo, zona: alerta.zona,
@@ -699,10 +694,10 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, set
   return (
     <div>
       {alertasOtros.length > 0 && (
-        <div style={{ background: "#140404", border: `1px solid ${C.red}`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
+        <div style={{ background: "#FFF5F5", border: `1px solid ${C.red}44`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
           <div style={{ color: C.red, fontWeight: 800, fontSize: 12, marginBottom: 8, letterSpacing: 1 }}>🆘 RADASHI NECESITA AYUDA</div>
           {alertasOtros.map((a, i) => (
-            <div key={i} style={{ background: C.card, borderRadius: 8, padding: 10, marginBottom: i < alertasOtros.length - 1 ? 6 : 0 }}>
+            <div key={i} style={{ background: C.surface, borderRadius: 8, padding: 10, marginBottom: i < alertasOtros.length - 1 ? 6 : 0, border: `1px solid ${C.border}`, boxShadow: "0 1px 4px #00000008" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <span style={{ fontSize: 22 }}>{a.icon}</span>
                 <div style={{ flex: 1 }}>
@@ -717,7 +712,7 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, set
       )}
 
       {miAlerta && (
-        <div style={{ background: "#140400", border: `1px solid ${C.red}66`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
+        <div style={{ background: "#FFF5F5", border: `1px solid ${C.red}66`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <span style={{ fontSize: 22 }}>{miAlerta.icon}</span>
             <div style={{ flex: 1 }}>
@@ -727,14 +722,13 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, set
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={desactivarAlerta} style={{ flex: 1, background: C.green, border: "none", borderRadius: 8, padding: 9, color: "#fff", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>✅ YA ESTOY BIEN</button>
-            {chatGlobal && <button onClick={() => setChatGlobal(chatGlobal)} style={{ flex: 1, background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: 9, color: C.text, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>💬 Ver chat</button>}
           </div>
         </div>
       )}
 
-      <div style={{ display: "flex", background: C.surface, borderRadius: 10, padding: 3, marginBottom: 14, border: `1px solid ${C.border}` }}>
+      <div style={{ display: "flex", background: C.surface, borderRadius: 10, padding: 3, marginBottom: 14, border: `1px solid ${C.border}`, boxShadow: "0 1px 4px #00000008" }}>
         {radarTabs.map(t => (
-          <button key={t.id} onClick={() => setRadarTab(t.id)} style={{ flex: 1, padding: "8px 4px", borderRadius: 8, border: "none", cursor: "pointer", background: radarTab === t.id ? (t.id === "emergencia" ? C.red : C.orange) : "transparent", color: radarTab === t.id ? (t.id === "emergencia" ? C.orange : C.bg) : C.muted, fontWeight: radarTab === t.id ? 800 : 400, fontSize: 11, letterSpacing: radarTab === t.id ? 0.5 : 0 }}>
+          <button key={t.id} onClick={() => setRadarTab(t.id)} style={{ flex: 1, padding: "8px 4px", borderRadius: 8, border: "none", cursor: "pointer", background: radarTab === t.id ? (t.id === "emergencia" ? C.red : C.orange) : "transparent", color: radarTab === t.id ? "#fff" : C.muted, fontWeight: radarTab === t.id ? 800 : 400, fontSize: 11, letterSpacing: radarTab === t.id ? 0.5 : 0 }}>
             {t.label}
           </button>
         ))}
@@ -745,29 +739,29 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, set
           <SectionBar label="RADASHIS CERCA 📡" />
           <div style={{ color: C.muted, fontSize: 12, marginBottom: 10 }}>Conecta con moteros de la comunidad cerca de tu zona.</div>
           {nearbyUsers.map(u => (
-            <div key={u.id} onClick={() => setSelected(u)} style={{ background: C.surface, borderRadius: 10, border: `1px solid ${C.border}`, borderTop: `2px solid ${u.clan ? C.orange : C.red}`, padding: 12, marginBottom: 8, display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-              <div style={{ width: 44, height: 44, borderRadius: "50%", background: C.card, border: `2px solid ${u.clan ? C.orange : C.red}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{u.avatar}</div>
+            <div key={u.id} onClick={() => setSelected(u)} style={{ background: C.surface, borderRadius: 10, border: `1px solid ${C.border}`, borderTop: `2px solid ${u.clan ? C.orange : C.red}`, padding: 12, marginBottom: 8, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", boxShadow: "0 1px 4px #00000008" }}>
+              <div style={{ width: 44, height: 44, borderRadius: "50%", background: u.clan ? "#FFF3E0" : "#FFF0F0", border: `2px solid ${u.clan ? C.orange : C.red}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{u.avatar}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ color: C.text, fontWeight: 700, fontSize: 14 }}>{u.name}</span>
                   {u.clan && <ClanBadge />}
                 </div>
                 <div style={{ color: C.muted, fontSize: 11 }}>📍 {u.zona} · ~{u.km} km</div>
-                <div style={{ color: C.orange, fontSize: 11 }}>🏍️ {u.moto}</div>
+                <div style={{ color: C.orange, fontSize: 11, fontWeight: 600 }}>🏍️ {u.moto}</div>
               </div>
               <span style={{ color: C.border, fontSize: 18 }}>›</span>
             </div>
           ))}
           {selected && (
-            <div style={{ position: "fixed", inset: 0, background: "#000000CC", zIndex: 200, display: "flex", alignItems: "flex-end" }} onClick={() => setSelected(null)}>
-              <div style={{ background: C.surface, borderRadius: "20px 20px 0 0", width: "100%", padding: 22, borderTop: `2px solid ${C.orange}` }} onClick={e => e.stopPropagation()}>
+            <div style={{ position: "fixed", inset: 0, background: "#00000066", zIndex: 200, display: "flex", alignItems: "flex-end" }} onClick={() => setSelected(null)}>
+              <div style={{ background: C.surface, borderRadius: "20px 20px 0 0", width: "100%", padding: 22, borderTop: `3px solid ${C.orange}` }} onClick={e => e.stopPropagation()}>
                 <div style={{ width: 36, height: 3, background: C.border, borderRadius: 2, margin: "0 auto 18px" }} />
                 <div style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 14 }}>
-                  <div style={{ width: 60, height: 60, borderRadius: "50%", background: C.card, border: `2px solid ${selected.clan ? C.orange : C.red}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30 }}>{selected.avatar}</div>
+                  <div style={{ width: 60, height: 60, borderRadius: "50%", background: selected.clan ? "#FFF3E0" : "#FFF0F0", border: `2px solid ${selected.clan ? C.orange : C.red}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30 }}>{selected.avatar}</div>
                   <div>
                     <div style={{ color: C.text, fontWeight: 900, fontSize: 18 }}>{selected.name}</div>
                     <div style={{ color: C.muted, fontSize: 12 }}>📍 {selected.zona} · ~{selected.km} km</div>
-                    <div style={{ color: C.orange, fontSize: 12 }}>🏍️ {selected.moto}</div>
+                    <div style={{ color: C.orange, fontSize: 12, fontWeight: 600 }}>🏍️ {selected.moto}</div>
                     {selected.clan && <ClanBadge />}
                   </div>
                 </div>
@@ -785,16 +779,16 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, set
           <div style={{ color: C.muted, fontSize: 12, marginBottom: 10 }}>Lugares que pueden ayudarte si vas en moto o estás en ruta.</div>
           <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 10, marginBottom: 8 }}>
             {categoriasFiltro.map(cat => (
-              <button key={cat} onClick={() => setCategoriaFiltro(cat)} style={{ flexShrink: 0, padding: "5px 12px", borderRadius: 20, border: `1px solid ${categoriaFiltro === cat ? C.orange : C.border}`, background: categoriaFiltro === cat ? C.orangeGlow : "transparent", color: categoriaFiltro === cat ? C.orange : C.muted, fontSize: 11, cursor: "pointer", fontWeight: categoriaFiltro === cat ? 700 : 400 }}>{cat}</button>
+              <button key={cat} onClick={() => setCategoriaFiltro(cat)} style={{ flexShrink: 0, padding: "5px 12px", borderRadius: 20, border: `1px solid ${categoriaFiltro === cat ? C.orange : C.border}`, background: categoriaFiltro === cat ? C.orangeGlow : C.surface, color: categoriaFiltro === cat ? C.orange : C.muted, fontSize: 11, cursor: "pointer", fontWeight: categoriaFiltro === cat ? 700 : 400 }}>{cat}</button>
             ))}
           </div>
           {puntosFiltrados.map(p => (
-            <div key={p.id} style={{ background: C.surface, borderRadius: 10, border: `1px solid ${C.border}`, borderTop: `2px solid ${p.aliado ? C.orange : C.red}`, padding: 12, marginBottom: 8, display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <div key={p.id} style={{ background: C.surface, borderRadius: 10, border: `1px solid ${C.border}`, borderTop: `2px solid ${p.aliado ? C.orange : C.red}`, padding: 12, marginBottom: 8, display: "flex", gap: 10, alignItems: "flex-start", boxShadow: "0 1px 4px #00000008" }}>
               <div style={{ width: 42, height: 42, borderRadius: 10, background: C.card, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>{p.icon}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
                   <span style={{ color: C.text, fontWeight: 700, fontSize: 13 }}>{p.nombre}</span>
-                  {p.aliado && <span style={{ background: C.orange, color: C.bg, fontSize: 8, padding: "1px 5px", borderRadius: 6, fontWeight: 800, letterSpacing: 1 }}>ALIADO</span>}
+                  {p.aliado && <span style={{ background: C.orange, color: "#fff", fontSize: 8, padding: "1px 5px", borderRadius: 6, fontWeight: 800, letterSpacing: 1 }}>ALIADO</span>}
                 </div>
                 <div style={{ color: C.muted, fontSize: 11, marginBottom: 2 }}>📍 {p.zona}</div>
                 <div style={{ color: C.muted, fontSize: 11 }}>{p.desc}</div>
@@ -809,21 +803,19 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, set
         <div>
           <SectionBar label="MODO EMERGENCIA 🆘" />
           <div style={{ color: C.muted, fontSize: 12, marginBottom: 14 }}>¿Necesitas ayuda? Activa una alerta y un Radashi cercano puede ayudarte.</div>
-
           {!miAlerta ? (
             <BtnMain red onClick={() => setPedirAyuda(true)} style={{ marginBottom: 12, fontSize: 16, padding: 16 }}>
               🆘 PEDIR AYUDA AHORA
             </BtnMain>
           ) : (
-            <div style={{ background: "#140404", border: `1px solid ${C.red}`, borderRadius: 10, padding: 18, marginBottom: 12, textAlign: "center" }}>
+            <div style={{ background: "#FFF5F5", border: `1px solid ${C.red}`, borderRadius: 10, padding: 18, marginBottom: 12, textAlign: "center" }}>
               <div style={{ fontSize: 34, marginBottom: 8 }}>{miAlerta.icon}</div>
               <div style={{ color: C.red, fontWeight: 900, fontSize: 15, marginBottom: 4, letterSpacing: 1 }}>ALERTA ACTIVA</div>
               <div style={{ color: C.muted, fontSize: 12, marginBottom: 14 }}>{miAlerta.tipo} · {miAlerta.zona}</div>
               <button onClick={desactivarAlerta} style={{ background: C.green, border: "none", borderRadius: 10, padding: "11px 24px", color: "#fff", fontWeight: 900, fontSize: 13, cursor: "pointer", letterSpacing: 1 }}>✅ YA ESTOY BIEN</button>
             </div>
           )}
-
-          <div style={{ background: "#040A04", border: `1px solid ${C.green}44`, borderRadius: 10, padding: 12 }}>
+          <div style={{ background: "#F0FFF4", border: `1px solid ${C.green}44`, borderRadius: 10, padding: 12 }}>
             <div style={{ color: C.green, fontWeight: 700, fontSize: 12, marginBottom: 4, letterSpacing: 1 }}>⚠️ IMPORTANTE</div>
             <div style={{ color: C.muted, fontSize: 12, lineHeight: 1.6 }}>En caso de emergencia médica real, llama al 911. Esta sección es apoyo entre moteros para situaciones comunes.</div>
             <a href={"https://wa.me/" + SOPORTE_WA} target="_blank" rel="noopener noreferrer" style={{ display: "block", marginTop: 10, color: C.green, fontSize: 12, fontWeight: 700, textDecoration: "none" }}>🟢 Contactar soporte Radashi por WhatsApp</a>
@@ -836,7 +828,6 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, set
   );
 }
 
-// ── APP PRINCIPAL ────────────────────────────────────────────
 export default function RadashiApp({ user, onLogout }) {
   const [tab, setTab] = useState("feed");
   const [toast, setToast] = useState(null);
@@ -909,16 +900,14 @@ export default function RadashiApp({ user, onLogout }) {
   if (visor) return <Visor url={visor.url} titulo={visor.titulo} onCerrar={() => setVisor(null)} />;
 
   return (
-    <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "system-ui, sans-serif", paddingBottom: 80 }}>
+    <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "system-ui, sans-serif", paddingBottom: 80, ...gearBg }}>
 
-      {/* Toast */}
       {toast && (
-        <div style={{ position: "fixed", top: 90, left: "50%", transform: "translateX(-50%)", background: C.green, color: "#fff", padding: "10px 20px", borderRadius: 20, fontWeight: 700, fontSize: 13, zIndex: 500, letterSpacing: 1 }}>{toast}</div>
+        <div style={{ position: "fixed", top: 90, left: "50%", transform: "translateX(-50%)", background: C.green, color: "#fff", padding: "10px 20px", borderRadius: 20, fontWeight: 700, fontSize: 13, zIndex: 500, letterSpacing: 1, boxShadow: "0 4px 12px #22C55E44" }}>{toast}</div>
       )}
 
-      {/* Notificación global */}
       {notificacion && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, background: C.red, padding: "12px 16px", zIndex: 600, display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, background: C.red, padding: "12px 16px", zIndex: 600, display: "flex", alignItems: "center", gap: 10, boxShadow: "0 4px 12px #98060444" }}>
           <span style={{ fontSize: 20 }}>🆘</span>
           <div style={{ flex: 1 }}>
             <div style={{ color: "#fff", fontWeight: 800, fontSize: 12, letterSpacing: 1 }}>{notificacion.ayudanteNombre} quiere ayudarte</div>
@@ -933,35 +922,27 @@ export default function RadashiApp({ user, onLogout }) {
         </div>
       )}
 
-      {/* Banner alerta activa global */}
       {miAlerta && (
-        <div style={{ background: "#140400", borderBottom: `1px solid ${C.red}66`, padding: "9px 14px", display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ background: "#FFF5F5", borderBottom: `2px solid ${C.red}44`, padding: "9px 14px", display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>{miAlerta.icon}</span>
           <div style={{ flex: 1, color: C.red, fontWeight: 700, fontSize: 11, letterSpacing: 1 }}>ALERTA ACTIVA — {miAlerta.tipo}</div>
           <button onClick={desactivarAlertaGlobal} style={{ background: C.green, border: "none", borderRadius: 20, padding: "4px 10px", color: "#fff", fontSize: 10, fontWeight: 800, cursor: "pointer", letterSpacing: 1, flexShrink: 0 }}>✅ YA ESTOY BIEN</button>
         </div>
       )}
 
-      {/* Header */}
       <AppHeader user={user} perfil={perfil} onLogout={onLogout} subtitulo={subtitulos[tab]} />
 
-      {/* Chat global */}
       {chatGlobal && (
         <ChatAyuda chatId={chatGlobal.chatId} user={user} perfil={perfil} alerta={chatGlobal.alerta} onCerrar={() => setChatGlobal(null)} onResuelto={() => { setMiAlerta(null); setChatGlobal(null); }} />
       )}
 
       <div style={{ padding: 14 }}>
-
-        {/* FEED */}
         {tab === "feed" && <Feed user={user} perfil={perfil} />}
-
-        {/* RADAR */}
         {tab === "cerca" && <Radar user={user} perfil={perfil} showToast={showToast} miAlerta={miAlerta} setMiAlerta={setMiAlerta} chatGlobal={chatGlobal} setChatGlobal={setChatGlobal} />}
 
-        {/* CLAN */}
         {tab === "clan" && (
           <div>
-            <div style={{ background: "linear-gradient(135deg, #140800, #1A0C00)", border: `1px solid ${C.orange}44`, borderTop: `2px solid ${C.orange}`, borderRadius: 12, padding: 18, marginBottom: 12 }}>
+            <div style={{ background: "linear-gradient(135deg, #FFF8F0, #FFF3E0)", border: `1px solid ${C.orange}44`, borderTop: `3px solid ${C.orange}`, borderRadius: 12, padding: 18, marginBottom: 12, boxShadow: "0 2px 8px #ffa22e18" }}>
               <div style={{ color: C.orange, fontSize: 10, fontWeight: 800, letterSpacing: 2, marginBottom: 6 }}>⭐ CLAN RADASHI</div>
               <div style={{ color: C.text, fontWeight: 900, fontSize: 18, lineHeight: 1.2, marginBottom: 6 }}>Deja de adivinar, empieza a entender tu moto</div>
               <div style={{ color: C.muted, fontSize: 12, marginBottom: 14 }}>Clases en vivo · Grabaciones · Guías · Comunidad exclusiva</div>
@@ -969,8 +950,7 @@ export default function RadashiApp({ user, onLogout }) {
                 ÚNETE AL CLAN 🔥
               </BtnMain>
             </div>
-
-            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderTop: `2px solid ${C.red}`, borderRadius: 12, padding: 18 }}>
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderTop: `3px solid ${C.red}`, borderRadius: 12, padding: 18, boxShadow: "0 2px 8px #00000008" }}>
               <div style={{ color: C.red, fontSize: 10, fontWeight: 800, letterSpacing: 2, marginBottom: 6 }}>🛒 TIENDA OFICIAL</div>
               <div style={{ color: C.text, fontWeight: 900, fontSize: 18, lineHeight: 1.2, marginBottom: 6 }}>Refacciones, accesorios y más</div>
               <div style={{ color: C.muted, fontSize: 12, marginBottom: 14 }}>Todo lo que tu moto necesita en un solo lugar</div>
@@ -981,10 +961,9 @@ export default function RadashiApp({ user, onLogout }) {
           </div>
         )}
 
-        {/* MI MOTO */}
         {tab === "perfil" && (
           <div>
-            <div style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, borderTop: `2px solid ${C.orange}`, padding: 14, marginBottom: 12, display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, borderTop: `3px solid ${C.orange}`, padding: 14, marginBottom: 12, display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 8px #00000008" }}>
               <Avatar foto={perfil.foto} size={54} />
               <div style={{ flex: 1 }}>
                 <div style={{ color: C.text, fontWeight: 900, fontSize: 17 }}>{perfil.nombre || "Sin nombre"}</div>
@@ -998,12 +977,11 @@ export default function RadashiApp({ user, onLogout }) {
         )}
       </div>
 
-      {/* TAB BAR */}
-      <div style={{ position: "fixed", bottom: 0, width: "100%", background: C.bg, borderTop: `2px solid ${C.red}`, display: "flex", padding: "8px 0 18px" }}>
+      <div style={{ position: "fixed", bottom: 0, width: "100%", background: C.surface, borderTop: `2px solid ${C.red}`, display: "flex", padding: "8px 0 18px", boxShadow: "0 -2px 12px #00000012" }}>
         {tabs.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
             <div style={{ fontSize: 20, filter: tab === t.id ? "none" : "grayscale(1) opacity(0.25)" }}>{t.icon}</div>
-            <div style={{ fontSize: 9, fontWeight: tab === t.id ? 800 : 400, color: tab === t.id ? C.orange : "#444", letterSpacing: tab === t.id ? 0.5 : 0 }}>{t.label}</div>
+            <div style={{ fontSize: 9, fontWeight: tab === t.id ? 800 : 400, color: tab === t.id ? C.orange : "#BBB", letterSpacing: tab === t.id ? 0.5 : 0 }}>{t.label}</div>
             {tab === t.id && <div style={{ width: 4, height: 4, borderRadius: "50%", background: C.orange }} />}
           </button>
         ))}
