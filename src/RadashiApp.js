@@ -61,6 +61,8 @@ const guias = {
 
 const categoriasFiltro = ["Todos", "Taller", "Gasolina", "Vulcanizadora", "Refaccionaria", "Punto de reunión", "Evento", "Aliado Radashi"];
 const SOPORTE_WA = "5610246564";
+const HEARTBEAT_INTERVAL = 30000;  // cada 30 segundos
+const OFFLINE_THRESHOLD = 2 * 60 * 1000; // 2 minutos sin heartbeat = fuera de línea
 
 const gearBg = {
   backgroundImage: `url("data:image/svg+xml,${GEAR_SVG_LIGHT}")`,
@@ -68,12 +70,34 @@ const gearBg = {
   backgroundRepeat: "repeat",
 };
 
-async function marcarEnLinea(uid) {
-  try { await updateDoc(doc(db, "usuarios", uid), { enLinea: true }); } catch (_) {}
+// ── presencia con heartbeat ──────────────────────────────────────────────────
+
+async function enviarHeartbeat(uid) {
+  try {
+    await updateDoc(doc(db, "usuarios", uid), {
+      enLinea: true,
+      ultimoVisto: Date.now(), // timestamp numérico, no serverTimestamp
+    });
+  } catch (_) {}
 }
+
 async function marcarFueraDeLinea(uid) {
-  try { await updateDoc(doc(db, "usuarios", uid), { enLinea: false }); } catch (_) {}
+  try {
+    await updateDoc(doc(db, "usuarios", uid), {
+      enLinea: false,
+      ultimoVisto: Date.now(),
+    });
+  } catch (_) {}
 }
+
+// Dado el ultimoVisto de un usuario, ¿está en línea?
+function estaEnLinea(usuario) {
+  if (!usuario.enLinea) return false;
+  if (!usuario.ultimoVisto) return false;
+  return (Date.now() - usuario.ultimoVisto) < OFFLINE_THRESHOLD;
+}
+
+// ── componentes base ─────────────────────────────────────────────────────────
 
 function Gear({ size = 40 }) {
   return (
@@ -147,6 +171,8 @@ function BtnMain({ children, onClick, disabled, red, style = {} }) {
   );
 }
 
+// ── ChatDirecto ───────────────────────────────────────────────────────────────
+
 function ChatDirecto({ chatId, user, perfil, otroUsuario, onCerrar }) {
   const [mensajes, setMensajes] = useState([]);
   const [texto, setTexto] = useState("");
@@ -165,23 +191,40 @@ function ChatDirecto({ chatId, user, perfil, otroUsuario, onCerrar }) {
   const enviar = async () => {
     if (!texto.trim()) return;
     setLoading(true);
+    const textoEnviar = texto;
+    setTexto("");
     try {
       await addDoc(collection(db, "chatsDirectos", chatId, "mensajes"), {
-        texto, userId: user.uid,
+        texto: textoEnviar,
+        userId: user.uid,
         userNombre: perfil.nombre || user.email,
         userFoto: perfil.foto || null,
         createdAt: serverTimestamp(),
       });
+
+      // Guardar metadata del chat
       await setDoc(doc(db, "chatsDirectos", chatId), {
         participantes: [user.uid, otroUsuario.uid],
-        ultimoMensaje: texto,
+        ultimoMensaje: textoEnviar,
         ultimaFecha: serverTimestamp(),
         [user.uid + "_nombre"]: perfil.nombre || user.email,
         [otroUsuario.uid + "_nombre"]: otroUsuario.nombre || otroUsuario.email,
         [user.uid + "_foto"]: perfil.foto || null,
         [otroUsuario.uid + "_foto"]: otroUsuario.foto || null,
       }, { merge: true });
-      setTexto("");
+
+      // Notificación al destinatario
+      await setDoc(doc(db, "notificacionesChat", otroUsuario.uid), {
+        chatId,
+        deChatId: chatId,
+        deNombre: perfil.nombre || user.email,
+        deFoto: perfil.foto || null,
+        deUid: user.uid,
+        ultimoMensaje: textoEnviar,
+        leido: false,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+
     } catch (e) { console.error(e); }
     setLoading(false);
   };
@@ -193,6 +236,7 @@ function ChatDirecto({ chatId, user, perfil, otroUsuario, onCerrar }) {
   };
 
   const esMio = (msg) => msg.userId === user.uid;
+  const online = estaEnLinea(otroUsuario);
 
   return (
     <div style={{ position: "fixed", inset: 0, background: C.bg, zIndex: 500, display: "flex", flexDirection: "column", fontFamily: "system-ui, sans-serif", ...gearBg }}>
@@ -202,11 +246,11 @@ function ChatDirecto({ chatId, user, perfil, otroUsuario, onCerrar }) {
           <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#FFF3E0", border: `2px solid ${C.orange}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, overflow: "hidden" }}>
             {otroUsuario.foto ? <img src={otroUsuario.foto} alt="perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span>😎</span>}
           </div>
-          <div style={{ position: "absolute", bottom: 0, right: 0 }}><PuntoPresencia enLinea={otroUsuario.enLinea} /></div>
+          <div style={{ position: "absolute", bottom: 0, right: 0 }}><PuntoPresencia enLinea={online} /></div>
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ color: C.text, fontWeight: 800, fontSize: 14 }}>{otroUsuario.nombre || otroUsuario.email?.split("@")[0] || "Radashi"}</div>
-          <div style={{ color: otroUsuario.enLinea ? C.green : C.muted, fontSize: 11 }}>{otroUsuario.enLinea ? "● En línea" : "○ Fuera de línea"}</div>
+          <div style={{ color: online ? C.green : C.muted, fontSize: 11 }}>{online ? "● En línea" : "○ Fuera de línea"}</div>
         </div>
       </div>
 
@@ -233,12 +277,20 @@ function ChatDirecto({ chatId, user, perfil, otroUsuario, onCerrar }) {
       </div>
 
       <div style={{ background: C.surface, padding: "8px 16px 28px", display: "flex", gap: 10, alignItems: "center", borderTop: `1px solid ${C.border}` }}>
-        <input value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => e.key === "Enter" && enviar()} placeholder={`Mensaje a ${otroUsuario.nombre || "Radashi"}...`} style={{ flex: 1, background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: "10px 16px", color: C.text, fontSize: 14, outline: "none" }} />
+        <input
+          value={texto}
+          onChange={e => setTexto(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && enviar()}
+          placeholder={`Mensaje a ${otroUsuario.nombre || "Radashi"}...`}
+          style={{ flex: 1, background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: "10px 16px", color: C.text, fontSize: 14, outline: "none" }}
+        />
         <button onClick={enviar} disabled={loading || !texto.trim()} style={{ width: 42, height: 42, borderRadius: "50%", background: texto.trim() ? C.orange : C.card, border: "none", cursor: "pointer", fontSize: 18, color: "#fff" }}>↑</button>
       </div>
     </div>
   );
 }
+
+// ── ChatAyuda ────────────────────────────────────────────────────────────────
 
 function ChatAyuda({ chatId, user, perfil, alerta, onCerrar, onResuelto }) {
   const [mensajes, setMensajes] = useState([]);
@@ -363,6 +415,8 @@ function ChatAyuda({ chatId, user, perfil, alerta, onCerrar, onResuelto }) {
   );
 }
 
+// ── PedirAyuda ───────────────────────────────────────────────────────────────
+
 function PedirAyuda({ user, perfil, onCerrar, onAlertaCreada }) {
   const [paso, setPaso] = useState(1);
   const [tipo, setTipo] = useState(null);
@@ -444,6 +498,8 @@ function PedirAyuda({ user, perfil, onCerrar, onAlertaCreada }) {
   );
 }
 
+// ── EditarPerfil ─────────────────────────────────────────────────────────────
+
 function EditarPerfil({ user, perfil, onGuardar, onCancelar }) {
   const [nombre, setNombre] = useState(perfil.nombre || "");
   const [ciudad, setCiudad] = useState(perfil.ciudad || "");
@@ -518,6 +574,8 @@ function EditarPerfil({ user, perfil, onGuardar, onCancelar }) {
   );
 }
 
+// ── NuevoPost ────────────────────────────────────────────────────────────────
+
 function NuevoPost({ user, perfil, onCerrar }) {
   const [texto, setTexto] = useState("");
   const [loading, setLoading] = useState(false);
@@ -550,6 +608,8 @@ function NuevoPost({ user, perfil, onCerrar }) {
     </div>
   );
 }
+
+// ── Comentarios ──────────────────────────────────────────────────────────────
 
 function Comentarios({ postId, user, perfil, onCerrar }) {
   const [comentarios, setComentarios] = useState([]);
@@ -615,6 +675,8 @@ function Comentarios({ postId, user, perfil, onCerrar }) {
     </div>
   );
 }
+
+// ── Feed ─────────────────────────────────────────────────────────────────────
 
 function Feed({ user, perfil }) {
   const [posts, setPosts] = useState([]);
@@ -682,6 +744,8 @@ function Feed({ user, perfil }) {
   );
 }
 
+// ── Visor ────────────────────────────────────────────────────────────────────
+
 function Visor({ url, titulo, onCerrar }) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
@@ -705,6 +769,8 @@ function Visor({ url, titulo, onCerrar }) {
     </div>
   );
 }
+
+// ── Radar ────────────────────────────────────────────────────────────────────
 
 function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, setChatGlobal }) {
   const [radarTab, setRadarTab] = useState("radashis");
@@ -749,11 +815,13 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, set
     guardarUbicacion();
   }, [user?.uid]);
 
-  // Solo usuarios EN LÍNEA
+  // Escuchar TODOS los usuarios y filtrar por heartbeat reciente
   useEffect(() => {
-    const q = query(collection(db, "usuarios"), where("enLinea", "==", true));
-    const unsub = onSnapshot(q, (snapshot) => {
-      setUsuarios(snapshot.docs.map((d) => ({ uid: d.id, ...d.data() })).filter((u) => u.uid !== user?.uid));
+    const unsub = onSnapshot(collection(db, "usuarios"), (snapshot) => {
+      const todos = snapshot.docs
+        .map((d) => ({ uid: d.id, ...d.data() }))
+        .filter((u) => u.uid !== user?.uid && estaEnLinea(u));
+      setUsuarios(todos);
     }, (err) => console.error(err));
     return () => unsub();
   }, [user?.uid]);
@@ -928,11 +996,11 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, set
                     <div style={{ width: 60, height: 60, borderRadius: "50%", background: "#FFF3E0", border: `2px solid ${C.orange}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30, overflow: "hidden" }}>
                       {selected.foto ? <img src={selected.foto} alt="perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span>😎</span>}
                     </div>
-                    <div style={{ position: "absolute", bottom: 2, right: 2 }}><PuntoPresencia enLinea={selected.enLinea} /></div>
+                    <div style={{ position: "absolute", bottom: 2, right: 2 }}><PuntoPresencia enLinea={estaEnLinea(selected)} /></div>
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ color: C.text, fontWeight: 900, fontSize: 18 }}>{selected.nombre || selected.email?.split("@")[0] || "Radashi"}</div>
-                    <div style={{ color: selected.enLinea ? C.green : C.muted, fontSize: 12 }}>{selected.enLinea ? "● En línea ahora" : "○ Fuera de línea"}</div>
+                    <div style={{ color: estaEnLinea(selected) ? C.green : C.muted, fontSize: 12 }}>{estaEnLinea(selected) ? "● En línea ahora" : "○ Fuera de línea"}</div>
                     {selected.ubicacion?.ciudad && (
                       <div style={{ color: C.muted, fontSize: 12 }}>
                         📍 {selected.ubicacion.ciudad}, {selected.ubicacion.estado}
@@ -1004,6 +1072,8 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, set
   );
 }
 
+// ── RadashiApp ────────────────────────────────────────────────────────────────
+
 export default function RadashiApp({ user, onLogout }) {
   const [tab, setTab] = useState("feed");
   const [toast, setToast] = useState(null);
@@ -1013,17 +1083,40 @@ export default function RadashiApp({ user, onLogout }) {
   const [miAlerta, setMiAlerta] = useState(null);
   const [chatGlobal, setChatGlobal] = useState(null);
   const [notificacion, setNotificacion] = useState(null);
+  const [notifChat, setNotifChat] = useState(null); // notificación de mensaje directo
+  const heartbeatRef = useRef(null);
 
+  // ── HEARTBEAT: cada 30s mientras la app esté abierta ──
   useEffect(() => {
     if (!user?.uid) return;
-    marcarEnLinea(user.uid);
-    const handleOffline = () => marcarFueraDeLinea(user.uid);
-    window.addEventListener("beforeunload", handleOffline);
-    window.addEventListener("pagehide", handleOffline);
+
+    // Primer heartbeat inmediato
+    enviarHeartbeat(user.uid);
+
+    // Repetir cada 30 segundos
+    heartbeatRef.current = setInterval(() => {
+      enviarHeartbeat(user.uid);
+    }, HEARTBEAT_INTERVAL);
+
+    // Cuando minimiza o cambia de pestaña, parar heartbeat (celular)
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        clearInterval(heartbeatRef.current);
+        marcarFueraDeLinea(user.uid);
+      } else {
+        enviarHeartbeat(user.uid);
+        heartbeatRef.current = setInterval(() => {
+          enviarHeartbeat(user.uid);
+        }, HEARTBEAT_INTERVAL);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
+      clearInterval(heartbeatRef.current);
       marcarFueraDeLinea(user.uid);
-      window.removeEventListener("beforeunload", handleOffline);
-      window.removeEventListener("pagehide", handleOffline);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [user?.uid]);
 
@@ -1043,6 +1136,7 @@ export default function RadashiApp({ user, onLogout }) {
     return unsub;
   }, [user]);
 
+  // Notificaciones de emergencia
   useEffect(() => {
     if (!user) return;
     const unsub = onSnapshot(doc(db, "notificaciones", user.uid), snap => {
@@ -1051,9 +1145,22 @@ export default function RadashiApp({ user, onLogout }) {
     return unsub;
   }, [user]);
 
+  // Notificaciones de chat directo
+  useEffect(() => {
+    if (!user) return;
+    const unsub = onSnapshot(doc(db, "notificacionesChat", user.uid), snap => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (!data.leido) setNotifChat(data);
+      }
+    });
+    return unsub;
+  }, [user]);
+
   const showToast = (m) => { setToast(m); setTimeout(() => setToast(null), 3000); };
 
   const handleLogout = async () => {
+    clearInterval(heartbeatRef.current);
     await marcarFueraDeLinea(user.uid);
     onLogout();
   };
@@ -1081,8 +1188,10 @@ export default function RadashiApp({ user, onLogout }) {
 
   return (
     <div style={{ background: C.bg, minHeight: "100vh", fontFamily: "system-ui, sans-serif", paddingBottom: 80, ...gearBg }}>
+
       {toast && <div style={{ position: "fixed", top: 90, left: "50%", transform: "translateX(-50%)", background: C.green, color: "#fff", padding: "10px 20px", borderRadius: 20, fontWeight: 700, fontSize: 13, zIndex: 500, letterSpacing: 1, boxShadow: "0 4px 12px #22C55E44" }}>{toast}</div>}
 
+      {/* Notificación de emergencia */}
       {notificacion && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, background: C.red, padding: "12px 16px", zIndex: 600, display: "flex", alignItems: "center", gap: 10, boxShadow: "0 4px 12px #98060444" }}>
           <span style={{ fontSize: 20 }}>🆘</span>
@@ -1099,6 +1208,27 @@ export default function RadashiApp({ user, onLogout }) {
         </div>
       )}
 
+      {/* Notificación de mensaje directo */}
+      {notifChat && !notificacion && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, background: C.orange, padding: "12px 16px", zIndex: 600, display: "flex", alignItems: "center", gap: 10, boxShadow: "0 4px 12px #ffa22e44" }}>
+          <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#FFF3E0", border: `2px solid #fff`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, overflow: "hidden", flexShrink: 0 }}>
+            {notifChat.deFoto ? <img src={notifChat.deFoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span>😎</span>}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ color: "#fff", fontWeight: 800, fontSize: 12, letterSpacing: 1 }}>💬 {notifChat.deNombre}</div>
+            <div style={{ color: "#ffffff99", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{notifChat.ultimoMensaje}</div>
+          </div>
+          <button onClick={async () => {
+            await updateDoc(doc(db, "notificacionesChat", user.uid), { leido: true });
+            // Abrir el chat directo — reconstruir otroUsuario con los datos disponibles
+            const otroUsuario = { uid: notifChat.deUid, nombre: notifChat.deNombre, foto: notifChat.deFoto };
+            setChatGlobal({ chatId: notifChat.chatId, esChatDirecto: true, otroUsuario });
+            setNotifChat(null);
+          }} style={{ background: "#fff", border: "none", borderRadius: 20, padding: "5px 12px", color: C.orange, fontSize: 11, fontWeight: 800, cursor: "pointer", flexShrink: 0 }}>VER</button>
+          <button onClick={async () => { await updateDoc(doc(db, "notificacionesChat", user.uid), { leido: true }); setNotifChat(null); }} style={{ background: "none", border: "none", color: "#fff", fontSize: 18, cursor: "pointer" }}>✕</button>
+        </div>
+      )}
+
       {miAlerta && (
         <div style={{ background: "#FFF5F5", borderBottom: `2px solid ${C.red}44`, padding: "9px 14px", display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>{miAlerta.icon}</span>
@@ -1109,7 +1239,15 @@ export default function RadashiApp({ user, onLogout }) {
 
       <AppHeader user={user} perfil={perfil} onLogout={handleLogout} subtitulo={subtitulos[tab]} />
 
-      {chatGlobal && <ChatAyuda chatId={chatGlobal.chatId} user={user} perfil={perfil} alerta={chatGlobal.alerta} onCerrar={() => setChatGlobal(null)} onResuelto={() => { setMiAlerta(null); setChatGlobal(null); }} />}
+      {/* Chat de emergencia global */}
+      {chatGlobal && !chatGlobal.esChatDirecto && (
+        <ChatAyuda chatId={chatGlobal.chatId} user={user} perfil={perfil} alerta={chatGlobal.alerta} onCerrar={() => setChatGlobal(null)} onResuelto={() => { setMiAlerta(null); setChatGlobal(null); }} />
+      )}
+
+      {/* Chat directo abierto desde notificación */}
+      {chatGlobal && chatGlobal.esChatDirecto && (
+        <ChatDirecto chatId={chatGlobal.chatId} user={user} perfil={perfil} otroUsuario={chatGlobal.otroUsuario} onCerrar={() => setChatGlobal(null)} />
+      )}
 
       <div style={{ padding: 14 }}>
         {tab === "feed" && <Feed user={user} perfil={perfil} />}
