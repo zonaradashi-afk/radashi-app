@@ -34,13 +34,7 @@ const GEAR_SVG_LIGHT = `
   <rect x='5' y='5' width='1.4' height='3.5' rx='0.7' fill='%23980604' opacity='0.15' transform='rotate(-45 5.7 6.75)'/>
 </svg>`;
 
-const nearbyUsers = [
-  { id: 1, name: "TonoMotos", zona: "Cuautitlán", km: 2, avatar: "🏍️", clan: true, moto: "Honda CB500F 2022", bio: "Fanático del mantenimiento preventivo." },
-  { id: 2, name: "Fer_Rueda", zona: "Tlalnepantla", km: 5, avatar: "🔩", clan: false, moto: "Yamaha MT-03 2021", bio: "Aprendiendo mecánica con el Clan." },
-  { id: 3, name: "Xochitl_Z", zona: "Naucalpan", km: 8, avatar: "⚡", clan: true, moto: "Kawasaki Z400 2023", bio: "Primera moto este año. El Clan me salvó la vida." },
-  { id: 4, name: "Beto_Piston", zona: "Ecatepec", km: 11, avatar: "🔧", clan: false, moto: "Italika 250Z 2020", bio: "Mecánico de hobby. Le entro a todo." },
-  { id: 5, name: "Diana_Moto", zona: "Tultitlán", km: 14, avatar: "🌟", clan: true, moto: "Bajaj Dominar 400 2022", bio: "Viajes largos y carretera." },
-];
+// ─── datos estáticos ───────────────────────────────────────────────────────────
 
 const puntosUtiles = [
   { id: 1, tipo: "Taller", icon: "🔧", nombre: "Taller Zona Radashi", zona: "Cuautitlán Izcalli", desc: "Taller oficial de la comunidad", aliado: true },
@@ -79,6 +73,8 @@ const gearBg = {
   backgroundSize: "80px 80px",
   backgroundRepeat: "repeat",
 };
+
+// ─── componentes base ──────────────────────────────────────────────────────────
 
 function Gear({ size = 40 }) {
   return (
@@ -145,6 +141,8 @@ function BtnMain({ children, onClick, disabled, red, style = {} }) {
     </button>
   );
 }
+
+// ─── ChatAyuda ─────────────────────────────────────────────────────────────────
 
 function ChatAyuda({ chatId, user, perfil, alerta, onCerrar, onResuelto }) {
   const [mensajes, setMensajes] = useState([]);
@@ -275,6 +273,8 @@ function ChatAyuda({ chatId, user, perfil, alerta, onCerrar, onResuelto }) {
   );
 }
 
+// ─── PedirAyuda ────────────────────────────────────────────────────────────────
+
 function PedirAyuda({ user, perfil, onCerrar, onAlertaCreada }) {
   const [paso, setPaso] = useState(1);
   const [tipo, setTipo] = useState(null);
@@ -359,6 +359,8 @@ function PedirAyuda({ user, perfil, onCerrar, onAlertaCreada }) {
   );
 }
 
+// ─── EditarPerfil ──────────────────────────────────────────────────────────────
+
 function EditarPerfil({ user, perfil, onGuardar, onCancelar }) {
   const [nombre, setNombre] = useState(perfil.nombre || "");
   const [ciudad, setCiudad] = useState(perfil.ciudad || "");
@@ -435,6 +437,8 @@ function EditarPerfil({ user, perfil, onGuardar, onCancelar }) {
   );
 }
 
+// ─── NuevoPost ─────────────────────────────────────────────────────────────────
+
 function NuevoPost({ user, perfil, onCerrar }) {
   const [texto, setTexto] = useState("");
   const [loading, setLoading] = useState(false);
@@ -470,6 +474,8 @@ function NuevoPost({ user, perfil, onCerrar }) {
     </div>
   );
 }
+
+// ─── Comentarios ───────────────────────────────────────────────────────────────
 
 function Comentarios({ postId, user, perfil, onCerrar }) {
   const [comentarios, setComentarios] = useState([]);
@@ -538,6 +544,8 @@ function Comentarios({ postId, user, perfil, onCerrar }) {
     </div>
   );
 }
+
+// ─── Feed ──────────────────────────────────────────────────────────────────────
 
 function Feed({ user, perfil }) {
   const [posts, setPosts] = useState([]);
@@ -615,6 +623,8 @@ function Feed({ user, perfil }) {
   );
 }
 
+// ─── Visor ─────────────────────────────────────────────────────────────────────
+
 function Visor({ url, titulo, onCerrar }) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
@@ -639,6 +649,8 @@ function Visor({ url, titulo, onCerrar }) {
   );
 }
 
+// ─── Radar ─────────────────────────────────────────────────────────────────────
+
 function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, setChatGlobal }) {
   const [radarTab, setRadarTab] = useState("radashis");
   const [selected, setSelected] = useState(null);
@@ -646,10 +658,124 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, set
   const [alertasActivas, setAlertasActivas] = useState([]);
   const [pedirAyuda, setPedirAyuda] = useState(false);
 
+  // ── ubicación y usuarios reales ──
+  const [usuarios, setUsuarios] = useState([]);
+  const [miUbicacion, setMiUbicacion] = useState(null);
+  const [permisoDenegado, setPermisoDenegado] = useState(false);
+  const [cargandoUbicacion, setCargandoUbicacion] = useState(true);
+  const ubicacionGuardadaRef = useRef(false);
+
+  // Obtener y guardar ubicación aproximada (una vez por sesión)
   useEffect(() => {
-    const q = query(collection(db, "emergencias"), where("activa", "==", true), orderBy("createdAt", "desc"));
-    const unsub = onSnapshot(q, snap => {
-      setAlertasActivas(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    if (!user?.uid || ubicacionGuardadaRef.current) return;
+
+    const guardarUbicacion = async () => {
+      setCargandoUbicacion(true);
+      try {
+        const coords = await new Promise((resolve, reject) => {
+          if (!navigator.geolocation) return reject(new Error("no-geo"));
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            timeout: 10000,
+            maximumAge: 5 * 60 * 1000,
+            enableHighAccuracy: false,
+          });
+        });
+
+        const { latitude, longitude } = coords.coords;
+
+        // Reverse geocoding gratuito — OpenStreetMap, sin API key
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=10&accept-language=es`,
+          { headers: { "User-Agent": "ZonaRadashiApp/1.0" } }
+        );
+        const data = await res.json();
+        const addr = data.address || {};
+
+        const ciudad =
+          addr.city || addr.town || addr.municipality ||
+          addr.village || addr.county || "Desconocida";
+        const estado = addr.state || addr.region || "Desconocido";
+        const pais = addr.country_code?.toUpperCase() || "MX";
+
+        const ubicacion = { ciudad, estado, pais };
+        setMiUbicacion(ubicacion);
+
+        // Guardar en Firestore — SOLO ciudad/estado/país, NUNCA coordenadas exactas
+        await updateDoc(doc(db, "usuarios", user.uid), {
+          ubicacion: {
+            ciudad,
+            estado,
+            pais,
+            actualizadoEn: new Date().toISOString(),
+          },
+        });
+
+        ubicacionGuardadaRef.current = true;
+      } catch (err) {
+        console.warn("Ubicación no disponible:", err.message);
+        setPermisoDenegado(true);
+
+        // Intentar usar la última ubicación guardada en Firestore
+        try {
+          const snap = await getDoc(doc(db, "usuarios", user.uid));
+          if (snap.exists() && snap.data().ubicacion) {
+            setMiUbicacion(snap.data().ubicacion);
+          }
+        } catch (_) {}
+      } finally {
+        setCargandoUbicacion(false);
+      }
+    };
+
+    guardarUbicacion();
+  }, [user?.uid]);
+
+  // Escuchar usuarios reales en tiempo real
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, "usuarios"),
+      (snapshot) => {
+        const todos = snapshot.docs
+          .map((d) => ({ uid: d.id, ...d.data() }))
+          .filter((u) => u.uid !== user?.uid);
+        setUsuarios(todos);
+      },
+      (err) => console.error("Error escuchando usuarios:", err)
+    );
+    return () => unsub();
+  }, [user?.uid]);
+
+  // Ordenar por cercanía
+  const scoreCercania = (otraUbicacion) => {
+    if (!miUbicacion || !otraUbicacion) return 3;
+    if (miUbicacion.ciudad?.toLowerCase() === otraUbicacion.ciudad?.toLowerCase()) return 0;
+    if (miUbicacion.estado?.toLowerCase() === otraUbicacion.estado?.toLowerCase()) return 1;
+    if (miUbicacion.pais?.toLowerCase() === otraUbicacion.pais?.toLowerCase()) return 2;
+    return 3;
+  };
+
+  const labelCercania = (score) => {
+    switch (score) {
+      case 0: return { texto: "Tu ciudad", color: C.green };
+      case 1: return { texto: "Tu estado", color: C.orange };
+      case 2: return { texto: "Tu país", color: C.muted };
+      default: return { texto: "Otro país", color: C.border };
+    }
+  };
+
+  const usuariosOrdenados = [...usuarios].sort(
+    (a, b) => scoreCercania(a.ubicacion) - scoreCercania(b.ubicacion)
+  );
+
+  // ── emergencias ──
+  useEffect(() => {
+    const q = query(
+      collection(db, "emergencias"),
+      where("activa", "==", true),
+      orderBy("createdAt", "desc")
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      setAlertasActivas(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
     return unsub;
   }, []);
@@ -680,8 +806,11 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, set
     } catch (e) { console.error(e); }
   };
 
-  const alertasOtros = alertasActivas.filter(a => a.userId !== user.uid);
-  const puntosFiltrados = categoriaFiltro === "Todos" ? puntosUtiles : puntosUtiles.filter(p => p.tipo === categoriaFiltro);
+  const alertasOtros = alertasActivas.filter((a) => a.userId !== user.uid);
+  const puntosFiltrados =
+    categoriaFiltro === "Todos"
+      ? puntosUtiles
+      : puntosUtiles.filter((p) => p.tipo === categoriaFiltro);
 
   const radarTabs = [
     { id: "radashis", label: "👥 Radashis" },
@@ -689,10 +818,21 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, set
     { id: "emergencia", label: "🆘 Emergencia" },
   ];
 
-  if (chatGlobal) return <ChatAyuda chatId={chatGlobal.chatId} user={user} perfil={perfil} alerta={chatGlobal.alerta} onCerrar={() => setChatGlobal(null)} onResuelto={() => { setMiAlerta(null); setChatGlobal(null); }} />;
+  if (chatGlobal)
+    return (
+      <ChatAyuda
+        chatId={chatGlobal.chatId}
+        user={user}
+        perfil={perfil}
+        alerta={chatGlobal.alerta}
+        onCerrar={() => setChatGlobal(null)}
+        onResuelto={() => { setMiAlerta(null); setChatGlobal(null); }}
+      />
+    );
 
   return (
     <div>
+      {/* Alertas de otros usuarios */}
       {alertasOtros.length > 0 && (
         <div style={{ background: "#FFF5F5", border: `1px solid ${C.red}44`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
           <div style={{ color: C.red, fontWeight: 800, fontSize: 12, marginBottom: 8, letterSpacing: 1 }}>🆘 RADASHI NECESITA AYUDA</div>
@@ -711,6 +851,7 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, set
         </div>
       )}
 
+      {/* Mi alerta activa */}
       {miAlerta && (
         <div style={{ background: "#FFF5F5", border: `1px solid ${C.red}66`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -720,52 +861,144 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, set
               <div style={{ color: C.muted, fontSize: 11 }}>{miAlerta.tipo} · {miAlerta.zona}</div>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={desactivarAlerta} style={{ flex: 1, background: C.green, border: "none", borderRadius: 8, padding: 9, color: "#fff", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>✅ YA ESTOY BIEN</button>
-          </div>
+          <button onClick={desactivarAlerta} style={{ width: "100%", background: C.green, border: "none", borderRadius: 8, padding: 9, color: "#fff", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>✅ YA ESTOY BIEN</button>
         </div>
       )}
 
+      {/* Tabs */}
       <div style={{ display: "flex", background: C.surface, borderRadius: 10, padding: 3, marginBottom: 14, border: `1px solid ${C.border}`, boxShadow: "0 1px 4px #00000008" }}>
-        {radarTabs.map(t => (
+        {radarTabs.map((t) => (
           <button key={t.id} onClick={() => setRadarTab(t.id)} style={{ flex: 1, padding: "8px 4px", borderRadius: 8, border: "none", cursor: "pointer", background: radarTab === t.id ? (t.id === "emergencia" ? C.red : C.orange) : "transparent", color: radarTab === t.id ? "#fff" : C.muted, fontWeight: radarTab === t.id ? 800 : 400, fontSize: 11, letterSpacing: radarTab === t.id ? 0.5 : 0 }}>
             {t.label}
           </button>
         ))}
       </div>
 
+      {/* ── TAB: RADASHIS REALES ── */}
       {radarTab === "radashis" && (
         <div>
           <SectionBar label="RADASHIS CERCA 📡" />
-          <div style={{ color: C.muted, fontSize: 12, marginBottom: 10 }}>Conecta con moteros de la comunidad cerca de tu zona.</div>
-          {nearbyUsers.map(u => (
-            <div key={u.id} onClick={() => setSelected(u)} style={{ background: C.surface, borderRadius: 10, border: `1px solid ${C.border}`, borderTop: `2px solid ${u.clan ? C.orange : C.red}`, padding: 12, marginBottom: 8, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", boxShadow: "0 1px 4px #00000008" }}>
-              <div style={{ width: 44, height: 44, borderRadius: "50%", background: u.clan ? "#FFF3E0" : "#FFF0F0", border: `2px solid ${u.clan ? C.orange : C.red}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{u.avatar}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ color: C.text, fontWeight: 700, fontSize: 14 }}>{u.name}</span>
-                  {u.clan && <ClanBadge />}
-                </div>
-                <div style={{ color: C.muted, fontSize: 11 }}>📍 {u.zona} · ~{u.km} km</div>
-                <div style={{ color: C.orange, fontSize: 11, fontWeight: 600 }}>🏍️ {u.moto}</div>
-              </div>
-              <span style={{ color: C.border, fontSize: 18 }}>›</span>
+
+          {/* Estado de ubicación */}
+          {cargandoUbicacion ? (
+            <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12, marginBottom: 12, display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 18 }}>📡</span>
+              <div style={{ color: C.muted, fontSize: 12 }}>Detectando tu zona...</div>
             </div>
-          ))}
+          ) : permisoDenegado && !miUbicacion ? (
+            <div style={{ background: "#FFF8F0", border: `1px solid ${C.orange}44`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
+              <div style={{ color: C.orange, fontWeight: 700, fontSize: 12, marginBottom: 4 }}>📍 Activa tu ubicación para ver quién está cerca</div>
+              <div style={{ color: C.muted, fontSize: 11 }}>Los usuarios se muestran igualmente, pero sin orden de cercanía.</div>
+            </div>
+          ) : miUbicacion ? (
+            <div style={{ background: C.greenGlow, border: `1px solid ${C.green}44`, borderRadius: 10, padding: "8px 12px", marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 16 }}>📍</span>
+              <div style={{ color: C.green, fontSize: 12, fontWeight: 700 }}>
+                {miUbicacion.ciudad}, {miUbicacion.estado}
+              </div>
+              <div style={{ color: C.muted, fontSize: 11, marginLeft: "auto" }}>zona aproximada</div>
+            </div>
+          ) : null}
+
+          {/* Lista de usuarios reales */}
+          {usuariosOrdenados.length === 0 ? (
+            <div style={{ textAlign: "center", padding: 40 }}>
+              <div style={{ fontSize: 48 }}>🏍️</div>
+              <div style={{ color: C.text, fontWeight: 700, fontSize: 15, marginTop: 10 }}>Aún no hay más Radashis</div>
+              <div style={{ color: C.muted, fontSize: 12, marginTop: 6 }}>Invita a la comunidad para conectar con moteros cerca de ti</div>
+            </div>
+          ) : (
+            usuariosOrdenados.map((u) => {
+              const score = scoreCercania(u.ubicacion);
+              const cerca = labelCercania(score);
+              const esClan = u.clan || u.esClan || false;
+
+              return (
+                <div
+                  key={u.uid}
+                  onClick={() => setSelected(u)}
+                  style={{ background: C.surface, borderRadius: 10, border: `1px solid ${C.border}`, borderTop: `2px solid ${esClan ? C.orange : C.red}`, padding: 12, marginBottom: 8, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", boxShadow: "0 1px 4px #00000008" }}
+                >
+                  {/* Avatar */}
+                  <div style={{ width: 44, height: 44, borderRadius: "50%", background: esClan ? "#FFF3E0" : "#FFF0F0", border: `2px solid ${esClan ? C.orange : C.red}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0, overflow: "hidden" }}>
+                    {u.foto
+                      ? <img src={u.foto} alt="perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      : <span>😎</span>
+                    }
+                  </div>
+
+                  {/* Datos */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <span style={{ color: C.text, fontWeight: 700, fontSize: 14 }}>
+                        {u.nombre || u.email?.split("@")[0] || "Radashi"}
+                      </span>
+                      {esClan && <ClanBadge />}
+                    </div>
+                    {u.ubicacion?.ciudad ? (
+                      <div style={{ color: C.muted, fontSize: 11, marginTop: 1 }}>
+                        📍 {u.ubicacion.ciudad}, {u.ubicacion.estado}
+                        {miUbicacion && (
+                          <span style={{ marginLeft: 6, color: cerca.color, fontWeight: 700, fontSize: 10 }}>
+                            · {cerca.texto}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ color: C.border, fontSize: 11, marginTop: 1 }}>📍 Zona no compartida</div>
+                    )}
+                    {(u.marca || u.modelo) && (
+                      <div style={{ color: C.orange, fontSize: 11, fontWeight: 600, marginTop: 1 }}>
+                        🏍️ {[u.marca, u.modelo, u.anio].filter(Boolean).join(" ")}
+                      </div>
+                    )}
+                  </div>
+
+                  <span style={{ color: C.border, fontSize: 18 }}>›</span>
+                </div>
+              );
+            })
+          )}
+
+          {/* Modal detalle usuario */}
           {selected && (
             <div style={{ position: "fixed", inset: 0, background: "#00000066", zIndex: 200, display: "flex", alignItems: "flex-end" }} onClick={() => setSelected(null)}>
-              <div style={{ background: C.surface, borderRadius: "20px 20px 0 0", width: "100%", padding: 22, borderTop: `3px solid ${C.orange}` }} onClick={e => e.stopPropagation()}>
+              <div style={{ background: C.surface, borderRadius: "20px 20px 0 0", width: "100%", padding: 22, borderTop: `3px solid ${C.orange}` }} onClick={(e) => e.stopPropagation()}>
                 <div style={{ width: 36, height: 3, background: C.border, borderRadius: 2, margin: "0 auto 18px" }} />
                 <div style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 14 }}>
-                  <div style={{ width: 60, height: 60, borderRadius: "50%", background: selected.clan ? "#FFF3E0" : "#FFF0F0", border: `2px solid ${selected.clan ? C.orange : C.red}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30 }}>{selected.avatar}</div>
-                  <div>
-                    <div style={{ color: C.text, fontWeight: 900, fontSize: 18 }}>{selected.name}</div>
-                    <div style={{ color: C.muted, fontSize: 12 }}>📍 {selected.zona} · ~{selected.km} km</div>
-                    <div style={{ color: C.orange, fontSize: 12, fontWeight: 600 }}>🏍️ {selected.moto}</div>
-                    {selected.clan && <ClanBadge />}
+                  <div style={{ width: 60, height: 60, borderRadius: "50%", background: "#FFF3E0", border: `2px solid ${C.orange}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30, overflow: "hidden", flexShrink: 0 }}>
+                    {selected.foto
+                      ? <img src={selected.foto} alt="perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      : <span>😎</span>
+                    }
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ color: C.text, fontWeight: 900, fontSize: 18 }}>
+                      {selected.nombre || selected.email?.split("@")[0] || "Radashi"}
+                    </div>
+                    {selected.ubicacion?.ciudad && (
+                      <div style={{ color: C.muted, fontSize: 12 }}>
+                        📍 {selected.ubicacion.ciudad}, {selected.ubicacion.estado}
+                        {miUbicacion && (
+                          <span style={{ marginLeft: 6, color: labelCercania(scoreCercania(selected.ubicacion)).color, fontWeight: 700 }}>
+                            · {labelCercania(scoreCercania(selected.ubicacion)).texto}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {(selected.marca || selected.modelo) && (
+                      <div style={{ color: C.orange, fontSize: 12, fontWeight: 600 }}>
+                        🏍️ {[selected.marca, selected.modelo, selected.anio].filter(Boolean).join(" ")}
+                      </div>
+                    )}
+                    {(selected.clan || selected.esClan) && <ClanBadge />}
                   </div>
                 </div>
-                <div style={{ color: C.muted, fontSize: 13, padding: "10px 14px", background: C.card, borderRadius: 10, marginBottom: 14, borderLeft: `3px solid ${C.orange}` }}>"{selected.bio}"</div>
+                {selected.bio && (
+                  <div style={{ color: C.muted, fontSize: 13, padding: "10px 14px", background: C.card, borderRadius: 10, marginBottom: 14, borderLeft: `3px solid ${C.orange}` }}>
+                    "{selected.bio}"
+                  </div>
+                )}
                 <BtnMain onClick={() => setSelected(null)}>💬 ENVIAR MENSAJE</BtnMain>
               </div>
             </div>
@@ -773,16 +1006,19 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, set
         </div>
       )}
 
+      {/* ── TAB: PUNTOS ÚTILES ── */}
       {radarTab === "puntos" && (
         <div>
           <SectionBar label="PUNTOS ÚTILES 🧭" />
           <div style={{ color: C.muted, fontSize: 12, marginBottom: 10 }}>Lugares que pueden ayudarte si vas en moto o estás en ruta.</div>
           <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 10, marginBottom: 8 }}>
-            {categoriasFiltro.map(cat => (
-              <button key={cat} onClick={() => setCategoriaFiltro(cat)} style={{ flexShrink: 0, padding: "5px 12px", borderRadius: 20, border: `1px solid ${categoriaFiltro === cat ? C.orange : C.border}`, background: categoriaFiltro === cat ? C.orangeGlow : C.surface, color: categoriaFiltro === cat ? C.orange : C.muted, fontSize: 11, cursor: "pointer", fontWeight: categoriaFiltro === cat ? 700 : 400 }}>{cat}</button>
+            {categoriasFiltro.map((cat) => (
+              <button key={cat} onClick={() => setCategoriaFiltro(cat)} style={{ flexShrink: 0, padding: "5px 12px", borderRadius: 20, border: `1px solid ${categoriaFiltro === cat ? C.orange : C.border}`, background: categoriaFiltro === cat ? C.orangeGlow : C.surface, color: categoriaFiltro === cat ? C.orange : C.muted, fontSize: 11, cursor: "pointer", fontWeight: categoriaFiltro === cat ? 700 : 400 }}>
+                {cat}
+              </button>
             ))}
           </div>
-          {puntosFiltrados.map(p => (
+          {puntosFiltrados.map((p) => (
             <div key={p.id} style={{ background: C.surface, borderRadius: 10, border: `1px solid ${C.border}`, borderTop: `2px solid ${p.aliado ? C.orange : C.red}`, padding: 12, marginBottom: 8, display: "flex", gap: 10, alignItems: "flex-start", boxShadow: "0 1px 4px #00000008" }}>
               <div style={{ width: 42, height: 42, borderRadius: 10, background: C.card, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>{p.icon}</div>
               <div style={{ flex: 1 }}>
@@ -799,6 +1035,7 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, set
         </div>
       )}
 
+      {/* ── TAB: EMERGENCIA ── */}
       {radarTab === "emergencia" && (
         <div>
           <SectionBar label="MODO EMERGENCIA 🆘" />
@@ -823,10 +1060,22 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, set
         </div>
       )}
 
-      {pedirAyuda && <PedirAyuda user={user} perfil={perfil} onCerrar={() => setPedirAyuda(false)} onAlertaCreada={(alerta) => { setMiAlerta(alerta); showToast("¡Alerta enviada! Los Radashis cercanos pueden verte 🆘"); }} />}
+      {pedirAyuda && (
+        <PedirAyuda
+          user={user}
+          perfil={perfil}
+          onCerrar={() => setPedirAyuda(false)}
+          onAlertaCreada={(alerta) => {
+            setMiAlerta(alerta);
+            showToast("¡Alerta enviada! Los Radashis cercanos pueden verte 🆘");
+          }}
+        />
+      )}
     </div>
   );
 }
+
+// ─── RadashiApp (raíz) ─────────────────────────────────────────────────────────
 
 export default function RadashiApp({ user, onLogout }) {
   const [tab, setTab] = useState("feed");
@@ -938,7 +1187,17 @@ export default function RadashiApp({ user, onLogout }) {
 
       <div style={{ padding: 14 }}>
         {tab === "feed" && <Feed user={user} perfil={perfil} />}
-        {tab === "cerca" && <Radar user={user} perfil={perfil} showToast={showToast} miAlerta={miAlerta} setMiAlerta={setMiAlerta} chatGlobal={chatGlobal} setChatGlobal={setChatGlobal} />}
+        {tab === "cerca" && (
+          <Radar
+            user={user}
+            perfil={perfil}
+            showToast={showToast}
+            miAlerta={miAlerta}
+            setMiAlerta={setMiAlerta}
+            chatGlobal={chatGlobal}
+            setChatGlobal={setChatGlobal}
+          />
+        )}
 
         {tab === "clan" && (
           <div>
