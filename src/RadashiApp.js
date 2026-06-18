@@ -56,7 +56,7 @@ function Avatar({ foto, size = 48, emoji = "😎" }) {
   return <div style={{ width: size, height: size, borderRadius: "50%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.45, flexShrink: 0 }}>{emoji}</div>;
 }
 
-function ChatAyuda({ chatId, user, perfil, alerta, onCerrar }) {
+function ChatAyuda({ chatId, user, perfil, alerta, onCerrar, onResuelto }) {
   const [mensajes, setMensajes] = useState([]);
   const [texto, setTexto] = useState("");
   const [loading, setLoading] = useState(false);
@@ -123,6 +123,7 @@ function ChatAyuda({ chatId, user, perfil, alerta, onCerrar }) {
         userId: "sistema", userNombre: "Sistema", tipo: "sistema",
         createdAt: serverTimestamp(),
       });
+      if (onResuelto) onResuelto();
     } catch (e) { console.error(e); }
   };
 
@@ -556,13 +557,12 @@ function Visor({ url, titulo, onCerrar }) {
   );
 }
 
-function Radar({ user, perfil, showToast, miAlerta, setMiAlerta }) {
+function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, setChatGlobal }) {
   const [radarTab, setRadarTab] = useState("radashis");
   const [selected, setSelected] = useState(null);
   const [categoriaFiltro, setCategoriaFiltro] = useState("Todos");
   const [alertasActivas, setAlertasActivas] = useState([]);
   const [pedirAyuda, setPedirAyuda] = useState(false);
-  const [chatAbierto, setChatAbierto] = useState(null);
 
   useEffect(() => {
     const q = query(collection(db, "emergencias"), where("activa", "==", true), orderBy("createdAt", "desc"));
@@ -571,23 +571,6 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta }) {
     });
     return unsub;
   }, []);
-
-  // Escuchar chats dirigidos al usuario que pidió ayuda
-  useEffect(() => {
-    if (!miAlerta) return;
-    const q = query(collection(db, "chats"), orderBy("createdAt", "desc"));
-    // Detectar si alguien abrió un chat de ayuda para mi alerta
-    const chatPrefix = "ayuda_" + miAlerta.id + "_";
-    const unsub = onSnapshot(
-      query(collection(db, "chats", chatPrefix + user.uid, "mensajes"), orderBy("createdAt", "asc")),
-      snap => {
-        if (snap.docs.length > 0 && !chatAbierto) {
-          // Alguien mandó mensaje, abrir chat automáticamente
-        }
-      }
-    );
-    return unsub;
-  }, [miAlerta, user.uid]);
 
   const desactivarAlerta = async () => {
     if (!miAlerta) return;
@@ -600,23 +583,29 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta }) {
 
   const puedoAyudar = async (alerta) => {
     const chatId = "ayuda_" + alerta.id + "_" + user.uid;
+    const msgInicial = `Hola, soy ${perfil.nombre || user.email}. Vi tu alerta de "${alerta.tipo}" en ${alerta.zona}. ¿Todavía necesitas ayuda?`;
     try {
       await addDoc(collection(db, "chats", chatId, "mensajes"), {
-        texto: `Hola, soy ${perfil.nombre || user.email}. Vi tu alerta de "${alerta.tipo}" en ${alerta.zona}. ¿Todavía necesitas ayuda?`,
+        texto: msgInicial,
         userId: user.uid,
         userNombre: perfil.nombre || user.email,
         userFoto: perfil.foto || null,
         tipo: "texto",
         createdAt: serverTimestamp(),
       });
-      setChatAbierto({ chatId, alerta });
+      // Notificar al que pidió ayuda
+      await setDoc(doc(db, "notificaciones", alerta.userId), {
+        chatId,
+        alertaId: alerta.id,
+        tipo: alerta.tipo,
+        zona: alerta.zona,
+        ayudanteNombre: perfil.nombre || user.email,
+        ayudanteId: user.uid,
+        leido: false,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+      setChatGlobal({ chatId, alerta });
     } catch (e) { console.error(e); }
-  };
-
-  // El que pidió ayuda puede ver los chats de su alerta
-  const verMiChat = (alerta, ayudanteId) => {
-    const chatId = "ayuda_" + alerta.id + "_" + ayudanteId;
-    setChatAbierto({ chatId, alerta });
   };
 
   const alertasOtros = alertasActivas.filter(a => a.userId !== user.uid);
@@ -628,11 +617,8 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta }) {
     { id: "emergencia", icon: "🆘", label: "Emergencia" },
   ];
 
-  if (chatAbierto) return <ChatAyuda chatId={chatAbierto.chatId} user={user} perfil={perfil} alerta={chatAbierto.alerta} onCerrar={() => setChatAbierto(null)} />;
-
   return (
     <div>
-      {/* Banner alertas de otros */}
       {alertasOtros.length > 0 && (
         <div style={{ background: "#2A0000", border: "1px solid " + COLORS.red, borderRadius: 14, padding: 14, marginBottom: 16 }}>
           <div style={{ color: COLORS.red, fontWeight: 800, fontSize: 13, marginBottom: 8 }}>🆘 Un Radashi necesita ayuda cerca</div>
@@ -651,7 +637,6 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta }) {
         </div>
       )}
 
-      {/* Banner mi alerta activa — SIEMPRE visible */}
       {miAlerta && (
         <div style={{ background: "#1A0000", border: "1px solid " + COLORS.red + "88", borderRadius: 14, padding: 14, marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
@@ -663,7 +648,7 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta }) {
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={desactivarAlerta} style={{ flex: 1, background: COLORS.green, border: "none", borderRadius: 10, padding: "10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>✅ Ya estoy bien</button>
-            <button onClick={() => { const chatId = "ayuda_" + miAlerta.id + "_ver"; setChatAbierto({ chatId: "ayuda_" + miAlerta.id + "_" + user.uid, alerta: miAlerta }); }} style={{ flex: 1, background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 10, padding: "10px", color: COLORS.text, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>💬 Ver respuestas</button>
+            {chatGlobal && <button onClick={() => setChatGlobal(chatGlobal)} style={{ flex: 1, background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 10, padding: "10px", color: COLORS.text, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>💬 Ver chat</button>}
           </div>
         </div>
       )}
@@ -782,7 +767,9 @@ export default function RadashiApp({ user, onLogout }) {
   const [editando, setEditando] = useState(false);
   const [perfil, setPerfil] = useState({});
   const [visor, setVisor] = useState(null);
-  const [miAlerta, setMiAlerta] = useState(null); // Estado global de mi alerta
+  const [miAlerta, setMiAlerta] = useState(null);
+  const [chatGlobal, setChatGlobal] = useState(null);
+  const [notificacion, setNotificacion] = useState(null);
 
   useEffect(() => {
     if (user) {
@@ -792,7 +779,7 @@ export default function RadashiApp({ user, onLogout }) {
     }
   }, [user]);
 
-  // Escuchar si hay alerta activa mía en Firestore al cargar
+  // Escuchar mi alerta activa
   useEffect(() => {
     if (!user) return;
     const q = query(collection(db, "emergencias"), where("userId", "==", user.uid), where("activa", "==", true), orderBy("createdAt", "desc"));
@@ -807,7 +794,30 @@ export default function RadashiApp({ user, onLogout }) {
     return unsub;
   }, [user]);
 
+  // Escuchar notificaciones — alguien quiere ayudarme
+  useEffect(() => {
+    if (!user) return;
+    const unsub = onSnapshot(doc(db, "notificaciones", user.uid), snap => {
+      if (snap.exists()) {
+        const data = snap.data();
+        if (!data.leido) {
+          setNotificacion(data);
+        }
+      }
+    });
+    return unsub;
+  }, [user]);
+
   const showToast = (m) => { setToast(m); setTimeout(() => setToast(null), 3000); };
+
+  const desactivarAlertaGlobal = async () => {
+    if (!miAlerta) return;
+    try {
+      await updateDoc(doc(db, "emergencias", miAlerta.id), { activa: false });
+      setMiAlerta(null);
+      showToast("Alerta desactivada ✅");
+    } catch (e) { console.error(e); }
+  };
 
   const tabs = [
     { id: "feed", icon: "🏠", label: "Inicio" },
@@ -818,12 +828,41 @@ export default function RadashiApp({ user, onLogout }) {
 
   if (editando) return <EditarPerfil user={user} perfil={perfil} onGuardar={(data) => { setPerfil(data); setEditando(false); showToast("Perfil guardado! 🔥"); }} onCancelar={() => setEditando(false)} />;
   if (visor) return <Visor url={visor.url} titulo={visor.titulo} onCerrar={() => setVisor(null)} />;
+  if (chatGlobal) return <ChatAyuda chatId={chatGlobal.chatId} user={user} perfil={perfil} alerta={chatGlobal.alerta} onCerrar={() => setChatGlobal(null)} onResuelto={() => { setMiAlerta(null); setChatGlobal(null); }} />;
 
   return (
     <div style={{ background: COLORS.bg, minHeight: "100vh", fontFamily: "system-ui, sans-serif", paddingBottom: 80 }}>
       {toast && <div style={{ position: "fixed", top: 80, left: "50%", transform: "translateX(-50%)", background: COLORS.green, color: "#fff", padding: "10px 20px", borderRadius: 20, fontWeight: 700, fontSize: 14, zIndex: 500 }}>{toast}</div>}
 
-      <div style={{ background: COLORS.surface, borderBottom: "1px solid " + COLORS.border, padding: "16px 20px 12px", position: "sticky", top: 0, zIndex: 100 }}>
+      {/* Notificación — alguien quiere ayudarme */}
+      {notificacion && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, background: COLORS.red, padding: "14px 20px", zIndex: 600, display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 22 }}>🆘</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ color: "#fff", fontWeight: 800, fontSize: 13 }}>{notificacion.ayudanteNombre} quiere ayudarte</div>
+            <div style={{ color: "#ffffff99", fontSize: 12 }}>{notificacion.tipo}</div>
+          </div>
+          <button onClick={async () => {
+            await updateDoc(doc(db, "notificaciones", user.uid), { leido: true });
+            setChatGlobal({ chatId: notificacion.chatId, alerta: { id: notificacion.alertaId, tipo: notificacion.tipo, zona: notificacion.zona, userId: user.uid } });
+            setNotificacion(null);
+          }} style={{ background: "#fff", border: "none", borderRadius: 20, padding: "6px 14px", color: COLORS.red, fontSize: 12, fontWeight: 800, cursor: "pointer" }}>Ver chat</button>
+          <button onClick={async () => { await updateDoc(doc(db, "notificaciones", user.uid), { leido: true }); setNotificacion(null); }} style={{ background: "none", border: "none", color: "#fff", fontSize: 18, cursor: "pointer" }}>✕</button>
+        </div>
+      )}
+
+      {/* Banner alerta activa global — visible en todos los tabs */}
+      {miAlerta && (
+        <div style={{ background: "#1A0000", borderBottom: "1px solid " + COLORS.red + "66", padding: "10px 16px", display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 18 }}>{miAlerta.icon}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ color: COLORS.red, fontWeight: 700, fontSize: 12 }}>Tu alerta está activa — {miAlerta.tipo}</div>
+          </div>
+          <button onClick={desactivarAlertaGlobal} style={{ background: COLORS.green, border: "none", borderRadius: 20, padding: "5px 12px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>✅ Ya estoy bien</button>
+        </div>
+      )}
+
+      <div style={{ background: COLORS.surface, borderBottom: "1px solid " + COLORS.border, padding: "16px 20px 12px", position: "sticky", top: miAlerta ? 40 : 0, zIndex: 100 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <Avatar foto={perfil.foto} size={36} />
@@ -832,16 +871,13 @@ export default function RadashiApp({ user, onLogout }) {
               <div style={{ color: COLORS.muted, fontSize: 11 }}>{perfil.nombre || user?.email}</div>
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {miAlerta && <div style={{ width: 10, height: 10, borderRadius: "50%", background: COLORS.red, animation: "pulse 1s infinite" }} />}
-            <button onClick={onLogout} style={{ background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 20, padding: "6px 14px", color: COLORS.muted, fontSize: 12, cursor: "pointer" }}>Salir</button>
-          </div>
+          <button onClick={onLogout} style={{ background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 20, padding: "6px 14px", color: COLORS.muted, fontSize: 12, cursor: "pointer" }}>Salir</button>
         </div>
       </div>
 
       <div style={{ padding: 16 }}>
         {tab === "feed" && <Feed user={user} perfil={perfil} />}
-        {tab === "cerca" && <Radar user={user} perfil={perfil} showToast={showToast} miAlerta={miAlerta} setMiAlerta={setMiAlerta} />}
+        {tab === "cerca" && <Radar user={user} perfil={perfil} showToast={showToast} miAlerta={miAlerta} setMiAlerta={setMiAlerta} chatGlobal={chatGlobal} setChatGlobal={setChatGlobal} />}
 
         {tab === "clan" && (
           <div>
