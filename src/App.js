@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { auth } from './firebase';
+import { auth, db } from './firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import RadashiApp from './RadashiApp';
 
 const COLORS = {
@@ -22,8 +23,28 @@ function LoginScreen({ onLogin }) {
     setError("");
     try {
       if (modo === "registro") {
-        await createUserWithEmailAndPassword(auth, email, password);
+        // 1. Crear usuario en Firebase Auth
+        const resultado = await createUserWithEmailAndPassword(auth, email, password);
+        const nuevoUsuario = resultado.user;
+
+        // 2. Crear su documento en Firestore automáticamente
+        //    Esto evita el error en el Radar cuando intenta actualizarlo
+        await setDoc(doc(db, "usuarios", nuevoUsuario.uid), {
+          email: nuevoUsuario.email,
+          nombre: "",
+          foto: null,
+          ciudad: "",
+          marca: "",
+          modelo: "",
+          anio: "",
+          bio: "",
+          telefono: "",
+          clan: false,
+          creadoEn: new Date().toISOString(),
+        });
+
       } else {
+        // Login normal
         await signInWithEmailAndPassword(auth, email, password);
       }
     } catch (e) {
@@ -70,7 +91,27 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      if (u) {
+        // Verificar si el documento existe (para usuarios registrados antes de esta actualización)
+        // Si no existe, crearlo para que el Radar no truene
+        const snap = await getDoc(doc(db, "usuarios", u.uid));
+        if (!snap.exists()) {
+          await setDoc(doc(db, "usuarios", u.uid), {
+            email: u.email,
+            nombre: "",
+            foto: null,
+            ciudad: "",
+            marca: "",
+            modelo: "",
+            anio: "",
+            bio: "",
+            telefono: "",
+            clan: false,
+            creadoEn: new Date().toISOString(),
+          });
+        }
+      }
       setUser(u);
       setLoading(false);
     });
