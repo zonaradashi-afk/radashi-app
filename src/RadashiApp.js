@@ -122,16 +122,6 @@ function Avatar({ foto, size = 48, emoji = "😎", accent = C.orange }) {
 function ClanBadge() {
   return <span style={{ background: C.red, color: C.orange, fontSize: 8, padding: "1px 5px", borderRadius: 6, fontWeight: 800, letterSpacing: 1 }}>CLAN</span>;
 }
-
-// ── CARD ────────────────────────────────────────────────────
-function Card({ children, accent = C.orange, style = {} }) {
-  return (
-    <div style={{ background: C.surface, borderRadius: 10, border: `1px solid ${C.border}`, borderTop: `2px solid ${accent}`, padding: 12, marginBottom: 8, ...style }}>
-      {children}
-    </div>
-  );
-}
-
 // ── BTN ─────────────────────────────────────────────────────
 function BtnMain({ children, onClick, disabled, red, style = {} }) {
   return (
