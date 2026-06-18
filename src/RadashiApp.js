@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { db, storage } from "./firebase";
-import { doc, setDoc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, where } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, where, updateDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import MiMoto from "./MiMoto";
 
@@ -332,8 +332,10 @@ function Radar({ user, perfil, showToast }) {
   const [categoriaFiltro, setCategoriaFiltro] = useState("Todos");
   const [emergenciaActiva, setEmergenciaActiva] = useState(null);
   const [alertaEnviada, setAlertaEnviada] = useState(false);
+  const [alertaId, setAlertaId] = useState(null);
   const [alertasActivas, setAlertasActivas] = useState([]);
   const [enviandoAlerta, setEnviandoAlerta] = useState(false);
+  const [ayudando, setAyudando] = useState(null);
 
   useEffect(() => {
     const q = query(
@@ -353,19 +355,32 @@ function Radar({ user, perfil, showToast }) {
   const enviarAlerta = async (emergencia) => {
     setEnviandoAlerta(true);
     try {
-      await addDoc(collection(db, "emergencias"), {
+      const docRef = await addDoc(collection(db, "emergencias"), {
         tipo: emergencia.label,
         icon: emergencia.icon,
         userId: user.uid,
         userNombre: perfil.nombre || user.email,
+        userEmail: user.email,
         zona: perfil.ciudad || "Zona desconocida",
         activa: true,
         createdAt: serverTimestamp(),
       });
+      setAlertaId(docRef.id);
       setAlertaEnviada(true);
       showToast("¡Alerta enviada a Radashis cercanos! 🆘");
     } catch (e) { console.error(e); }
     setEnviandoAlerta(false);
+  };
+
+  const desactivarAlerta = async () => {
+    if (!alertaId) return;
+    try {
+      await updateDoc(doc(db, "emergencias", alertaId), { activa: false });
+      setAlertaEnviada(false);
+      setAlertaId(null);
+      setEmergenciaActiva(null);
+      showToast("Alerta desactivada ✅");
+    } catch (e) { console.error(e); }
   };
 
   const puntosFiltrados = categoriaFiltro === "Todos"
@@ -390,9 +405,26 @@ function Radar({ user, perfil, showToast }) {
                 <div style={{ color: COLORS.text, fontSize: 13, fontWeight: 700 }}>{a.userNombre} — {a.tipo}</div>
                 <div style={{ color: COLORS.muted, fontSize: 12 }}>📍 {a.zona}</div>
               </div>
-              <button style={{ background: COLORS.red, border: "none", borderRadius: 20, padding: "6px 14px", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Ayudar</button>
+              <button onClick={() => setAyudando(a)} style={{ background: COLORS.red, border: "none", borderRadius: 20, padding: "6px 14px", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Ayudar</button>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Modal ayudar */}
+      {ayudando && (
+        <div style={{ position: "fixed", inset: 0, background: "#000000CC", zIndex: 400, display: "flex", alignItems: "flex-end" }} onClick={() => setAyudando(null)}>
+          <div style={{ background: COLORS.surface, borderRadius: "24px 24px 0 0", width: "100%", padding: 24 }} onClick={e => e.stopPropagation()}>
+            <div style={{ width: 40, height: 4, background: COLORS.border, borderRadius: 2, margin: "0 auto 20px" }} />
+            <div style={{ fontSize: 36, textAlign: "center", marginBottom: 8 }}>{ayudando.icon}</div>
+            <div style={{ color: COLORS.text, fontWeight: 900, fontSize: 18, textAlign: "center", marginBottom: 4 }}>{ayudando.userNombre}</div>
+            <div style={{ color: COLORS.red, fontWeight: 700, fontSize: 14, textAlign: "center", marginBottom: 4 }}>{ayudando.tipo}</div>
+            <div style={{ color: COLORS.muted, fontSize: 13, textAlign: "center", marginBottom: 20 }}>📍 {ayudando.zona}</div>
+            <a href={"mailto:" + ayudando.userEmail} style={{ display: "block", width: "100%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", border: "none", borderRadius: 14, padding: 14, color: "#fff", fontWeight: 900, fontSize: 15, cursor: "pointer", textAlign: "center", textDecoration: "none", boxSizing: "border-box", marginBottom: 10 }}>
+              📧 Contactar por email
+            </a>
+            <button onClick={() => setAyudando(null)} style={{ width: "100%", background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 14, padding: 14, color: COLORS.muted, fontWeight: 700, fontSize: 14, cursor: "pointer" }}>Cerrar</button>
+          </div>
         </div>
       )}
 
@@ -481,18 +513,33 @@ function Radar({ user, perfil, showToast }) {
             <div style={{ color: COLORS.red, fontWeight: 800, fontSize: 20 }}>Modo emergencia 🆘</div>
             <div style={{ color: COLORS.muted, fontSize: 13, marginTop: 4 }}>Guía rápida para situaciones comunes. Toca tu situación.</div>
           </div>
+
+          {/* Banner alerta activa propia */}
+          {alertaEnviada && (
+            <div style={{ background: "#2A0000", border: "1px solid " + COLORS.red, borderRadius: 14, padding: 14, marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 24 }}>🆘</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: COLORS.red, fontWeight: 800, fontSize: 13 }}>Alerta activa</div>
+                <div style={{ color: COLORS.muted, fontSize: 12 }}>Los Radashis cercanos pueden verte</div>
+              </div>
+              <button onClick={desactivarAlerta} style={{ background: COLORS.green, border: "none", borderRadius: 20, padding: "6px 14px", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>✅ Ya estoy bien</button>
+            </div>
+          )}
+
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
             {emergencias.map(e => (
-              <button key={e.id} onClick={() => { setEmergenciaActiva(e); setAlertaEnviada(false); }} style={{ background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 14, padding: 16, cursor: "pointer", textAlign: "left" }}>
+              <button key={e.id} onClick={() => { setEmergenciaActiva(e); }} style={{ background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 14, padding: 16, cursor: "pointer", textAlign: "left" }}>
                 <div style={{ fontSize: 28, marginBottom: 8 }}>{e.icon}</div>
                 <div style={{ color: COLORS.text, fontWeight: 700, fontSize: 13 }}>{e.label}</div>
               </button>
             ))}
           </div>
+
           <div style={{ background: "#0A1A0A", border: "1px solid " + COLORS.green + "44", borderRadius: 14, padding: 14 }}>
             <div style={{ color: COLORS.green, fontWeight: 700, fontSize: 13, marginBottom: 4 }}>⚠️ Importante</div>
             <div style={{ color: COLORS.muted, fontSize: 12, lineHeight: 1.6 }}>En caso de emergencia médica real, llama al 911. Esta sección es una guía de apoyo para situaciones comunes en moto.</div>
           </div>
+
           {emergenciaActiva && (
             <div style={{ position: "fixed", inset: 0, background: "#000000CC", zIndex: 300, display: "flex", alignItems: "flex-end" }} onClick={() => setEmergenciaActiva(null)}>
               <div style={{ background: COLORS.surface, borderRadius: "24px 24px 0 0", width: "100%", maxHeight: "85vh", display: "flex", flexDirection: "column" }} onClick={e => e.stopPropagation()}>
@@ -514,11 +561,15 @@ function Radar({ user, perfil, showToast }) {
                   <div style={{ background: "#1A0000", border: "1px solid " + COLORS.red + "55", borderRadius: 14, padding: 16, marginTop: 8 }}>
                     <div style={{ color: COLORS.red, fontWeight: 800, fontSize: 14, marginBottom: 8 }}>📡 Alertar a Radashis cercanos</div>
                     <div style={{ color: COLORS.muted, fontSize: 13, marginBottom: 12 }}>
-                      {alertaEnviada ? "✅ Alerta enviada. Los Radashis cercanos pueden ver tu situación y ofrecerte ayuda." : "Manda una alerta a los moteros de la comunidad que estén cerca. Alguien puede ayudarte."}
+                      {alertaEnviada ? "✅ Alerta activa. Los Radashis cercanos pueden verte." : "Manda una alerta a los moteros de la comunidad que estén cerca."}
                     </div>
-                    {!alertaEnviada && (
+                    {!alertaEnviada ? (
                       <button onClick={() => enviarAlerta(emergenciaActiva)} disabled={enviandoAlerta} style={{ width: "100%", background: COLORS.red, border: "none", borderRadius: 12, padding: "12px", color: "#fff", fontWeight: 900, fontSize: 14, cursor: "pointer" }}>
                         {enviandoAlerta ? "Enviando..." : "🆘 Pedir ayuda a Radashis"}
+                      </button>
+                    ) : (
+                      <button onClick={desactivarAlerta} style={{ width: "100%", background: COLORS.green, border: "none", borderRadius: 12, padding: "12px", color: "#fff", fontWeight: 900, fontSize: 14, cursor: "pointer" }}>
+                        ✅ Ya estoy bien — Desactivar alerta
                       </button>
                     )}
                   </div>
