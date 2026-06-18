@@ -56,7 +56,6 @@ function Avatar({ foto, size = 48, emoji = "😎" }) {
   return <div style={{ width: size, height: size, borderRadius: "50%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.45, flexShrink: 0 }}>{emoji}</div>;
 }
 
-// ── CHAT DE AYUDA ──────────────────────────────────────────────
 function ChatAyuda({ chatId, user, perfil, alerta, onCerrar }) {
   const [mensajes, setMensajes] = useState([]);
   const [texto, setTexto] = useState("");
@@ -120,7 +119,7 @@ function ChatAyuda({ chatId, user, perfil, alerta, onCerrar }) {
     try {
       await updateDoc(doc(db, "emergencias", alerta.id), { activa: false, resuelta: true });
       await addDoc(collection(db, "chats", chatId, "mensajes"), {
-        texto: "✅ Emergencia marcada como resuelta. ¡Gracias a todos por ayudar!",
+        texto: "✅ Emergencia marcada como resuelta. ¡Gracias a todos!",
         userId: "sistema", userNombre: "Sistema", tipo: "sistema",
         createdAt: serverTimestamp(),
       });
@@ -137,7 +136,6 @@ function ChatAyuda({ chatId, user, perfil, alerta, onCerrar }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: COLORS.bg, zIndex: 500, display: "flex", flexDirection: "column", fontFamily: "system-ui, sans-serif" }}>
-      {/* Header */}
       <div style={{ background: COLORS.surface, padding: "16px 20px", borderBottom: "1px solid " + COLORS.border, display: "flex", alignItems: "center", gap: 12 }}>
         <button onClick={onCerrar} style={{ background: "none", border: "none", color: COLORS.orange, fontSize: 22, cursor: "pointer" }}>←</button>
         <div style={{ flex: 1 }}>
@@ -149,7 +147,6 @@ function ChatAyuda({ chatId, user, perfil, alerta, onCerrar }) {
         )}
       </div>
 
-      {/* Mensajes */}
       <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
         {mensajes.map((m, i) => (
           <div key={i}>
@@ -174,19 +171,17 @@ function ChatAyuda({ chatId, user, perfil, alerta, onCerrar }) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Botones rápidos */}
       <div style={{ background: COLORS.surface, borderTop: "1px solid " + COLORS.border, padding: "10px 16px 0" }}>
         <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 10 }}>
           <button onClick={compartirUbicacion} style={{ flexShrink: 0, background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 20, padding: "6px 14px", color: COLORS.text, fontSize: 12, cursor: "pointer" }}>📍 Mi ubicación</button>
           <button onClick={compartirNumero} style={{ flexShrink: 0, background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 20, padding: "6px 14px", color: COLORS.text, fontSize: 12, cursor: "pointer" }}>📞 Mi número</button>
-          <a href={"https://wa.me/" + SOPORTE_WA} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0, background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 20, padding: "6px 14px", color: COLORS.text, fontSize: 12, cursor: "pointer", textDecoration: "none" }}>🟢 Soporte Radashi</a>
+          <a href={"https://wa.me/" + SOPORTE_WA} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0, background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 20, padding: "6px 14px", color: COLORS.text, fontSize: 12, cursor: "pointer", textDecoration: "none" }}>🟢 Soporte</a>
           {alerta.userId === user.uid && (
             <button onClick={marcarResuelto} style={{ flexShrink: 0, background: COLORS.greenGlow, border: "1px solid " + COLORS.green, borderRadius: 20, padding: "6px 14px", color: COLORS.green, fontSize: 12, cursor: "pointer", fontWeight: 700 }}>✅ Ya estoy bien</button>
           )}
         </div>
       </div>
 
-      {/* Input */}
       <div style={{ background: COLORS.surface, padding: "8px 16px 28px", display: "flex", gap: 10, alignItems: "center" }}>
         <input value={texto} onChange={e => setTexto(e.target.value)} onKeyDown={e => e.key === "Enter" && enviar()} placeholder="Escribe algo..." style={{ flex: 1, background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 20, padding: "10px 16px", color: COLORS.text, fontSize: 14, outline: "none" }} />
         <button onClick={() => enviar()} disabled={loading || !texto.trim()} style={{ width: 42, height: 42, borderRadius: "50%", background: texto.trim() ? COLORS.orange : COLORS.card, border: "none", cursor: "pointer", fontSize: 18, color: "#fff" }}>↑</button>
@@ -195,7 +190,6 @@ function ChatAyuda({ chatId, user, perfil, alerta, onCerrar }) {
   );
 }
 
-// ── FLUJO PEDIR AYUDA ──────────────────────────────────────────
 function PedirAyuda({ user, perfil, onCerrar, onAlertaCreada }) {
   const [paso, setPaso] = useState(1);
   const [tipoSeleccionado, setTipoSeleccionado] = useState(null);
@@ -207,11 +201,8 @@ function PedirAyuda({ user, perfil, onCerrar, onAlertaCreada }) {
     setUsandoGPS(true);
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setZonaTexto("Ubicación aproximada compartida");
-          setUsandoGPS(false);
-        },
-        () => { setZonaTexto(""); setUsandoGPS(false); }
+        () => { setZonaTexto("Ubicación aproximada compartida"); setUsandoGPS(false); },
+        () => { setUsandoGPS(false); }
       );
     }
   };
@@ -242,57 +233,44 @@ function PedirAyuda({ user, perfil, onCerrar, onAlertaCreada }) {
       <div style={{ background: COLORS.surface, borderRadius: "24px 24px 0 0", width: "100%", maxHeight: "85vh", display: "flex", flexDirection: "column" }} onClick={e => e.stopPropagation()}>
         <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid " + COLORS.border }}>
           <div style={{ width: 40, height: 4, background: COLORS.border, borderRadius: 2, margin: "0 auto 16px" }} />
-          <div style={{ color: COLORS.red, fontWeight: 900, fontSize: 18 }}>
-            {paso === 1 ? "🆘 ¿Qué pasó?" : "📍 ¿Dónde estás?"}
-          </div>
-          <div style={{ color: COLORS.muted, fontSize: 13, marginTop: 4 }}>
-            {paso === 1 ? "Elige tu situación" : "Comparte tu zona aproximada"}
-          </div>
+          <div style={{ color: COLORS.red, fontWeight: 900, fontSize: 18 }}>{paso === 1 ? "🆘 ¿Qué pasó?" : "📍 ¿Dónde estás?"}</div>
+          <div style={{ color: COLORS.muted, fontSize: 13, marginTop: 4 }}>{paso === 1 ? "Elige tu situación" : "Comparte tu zona aproximada"}</div>
         </div>
-
         <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
           {paso === 1 && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {tiposEmergencia.map(t => (
-                <button key={t.id} onClick={() => { setTipoSeleccionado(t); setPaso(2); }} style={{ background: COLORS.card, border: "2px solid " + (tipoSeleccionado?.id === t.id ? COLORS.red : COLORS.border), borderRadius: 14, padding: 16, cursor: "pointer", textAlign: "left" }}>
+                <button key={t.id} onClick={() => { setTipoSeleccionado(t); setPaso(2); }} style={{ background: COLORS.card, border: "2px solid " + COLORS.border, borderRadius: 14, padding: 16, cursor: "pointer", textAlign: "left" }}>
                   <div style={{ fontSize: 28, marginBottom: 8 }}>{t.icon}</div>
                   <div style={{ color: COLORS.text, fontWeight: 700, fontSize: 13 }}>{t.label}</div>
                 </button>
               ))}
             </div>
           )}
-
           {paso === 2 && (
             <div>
-              <div style={{ color: COLORS.text, fontWeight: 700, fontSize: 15, marginBottom: 16 }}>
-                {tipoSeleccionado?.icon} {tipoSeleccionado?.label}
-              </div>
-
-              {/* Guía rápida */}
+              <div style={{ color: COLORS.text, fontWeight: 700, fontSize: 15, marginBottom: 16 }}>{tipoSeleccionado?.icon} {tipoSeleccionado?.label}</div>
               <div style={{ background: COLORS.card, borderRadius: 12, padding: 14, marginBottom: 16 }}>
                 <div style={{ color: COLORS.orange, fontWeight: 700, fontSize: 12, marginBottom: 8 }}>QUÉ HACER MIENTRAS:</div>
-                {(guias[tipoSeleccionado?.id] || []).map((paso, i) => (
+                {(guias[tipoSeleccionado?.id] || []).map((p, i) => (
                   <div key={i} style={{ display: "flex", gap: 8, marginBottom: 6, alignItems: "flex-start" }}>
                     <div style={{ width: 20, height: 20, borderRadius: "50%", background: COLORS.orange, color: "#fff", fontSize: 10, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</div>
-                    <div style={{ color: COLORS.muted, fontSize: 13 }}>{paso}</div>
+                    <div style={{ color: COLORS.muted, fontSize: 13 }}>{p}</div>
                   </div>
                 ))}
               </div>
-
               <div style={{ color: COLORS.text, fontWeight: 700, fontSize: 14, marginBottom: 12 }}>¿Dónde estás?</div>
               <button onClick={usarGPS} disabled={usandoGPS} style={{ width: "100%", background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 12, padding: 14, color: COLORS.text, fontSize: 14, cursor: "pointer", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
                 {usandoGPS ? "Obteniendo ubicación..." : "📍 Usar mi ubicación aproximada"}
               </button>
               <div style={{ color: COLORS.muted, fontSize: 12, textAlign: "center", marginBottom: 10 }}>— o escribe tu zona —</div>
               <input value={zonaTexto} onChange={e => setZonaTexto(e.target.value)} placeholder="Ej: Coacalco, cerca de López Portillo" style={{ width: "100%", background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 12, padding: "12px 16px", color: COLORS.text, fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 16 }} />
-
               <button onClick={enviarAlerta} disabled={enviando || !zonaTexto.trim()} style={{ width: "100%", background: zonaTexto.trim() ? COLORS.red : COLORS.card, border: "none", borderRadius: 14, padding: 16, color: "#fff", fontWeight: 900, fontSize: 16, cursor: zonaTexto.trim() ? "pointer" : "default" }}>
                 {enviando ? "Enviando alerta..." : "🆘 Pedir ayuda ahora"}
               </button>
             </div>
           )}
         </div>
-
         {paso === 2 && (
           <div style={{ padding: "12px 20px 32px", borderTop: "1px solid " + COLORS.border }}>
             <button onClick={() => setPaso(1)} style={{ width: "100%", background: "none", border: "none", color: COLORS.muted, fontSize: 14, cursor: "pointer" }}>← Volver</button>
@@ -578,13 +556,12 @@ function Visor({ url, titulo, onCerrar }) {
   );
 }
 
-function Radar({ user, perfil, showToast }) {
+function Radar({ user, perfil, showToast, miAlerta, setMiAlerta }) {
   const [radarTab, setRadarTab] = useState("radashis");
   const [selected, setSelected] = useState(null);
   const [categoriaFiltro, setCategoriaFiltro] = useState("Todos");
   const [alertasActivas, setAlertasActivas] = useState([]);
   const [pedirAyuda, setPedirAyuda] = useState(false);
-  const [miAlerta, setMiAlerta] = useState(null);
   const [chatAbierto, setChatAbierto] = useState(null);
 
   useEffect(() => {
@@ -594,6 +571,23 @@ function Radar({ user, perfil, showToast }) {
     });
     return unsub;
   }, []);
+
+  // Escuchar chats dirigidos al usuario que pidió ayuda
+  useEffect(() => {
+    if (!miAlerta) return;
+    const q = query(collection(db, "chats"), orderBy("createdAt", "desc"));
+    // Detectar si alguien abrió un chat de ayuda para mi alerta
+    const chatPrefix = "ayuda_" + miAlerta.id + "_";
+    const unsub = onSnapshot(
+      query(collection(db, "chats", chatPrefix + user.uid, "mensajes"), orderBy("createdAt", "asc")),
+      snap => {
+        if (snap.docs.length > 0 && !chatAbierto) {
+          // Alguien mandó mensaje, abrir chat automáticamente
+        }
+      }
+    );
+    return unsub;
+  }, [miAlerta, user.uid]);
 
   const desactivarAlerta = async () => {
     if (!miAlerta) return;
@@ -619,8 +613,15 @@ function Radar({ user, perfil, showToast }) {
     } catch (e) { console.error(e); }
   };
 
+  // El que pidió ayuda puede ver los chats de su alerta
+  const verMiChat = (alerta, ayudanteId) => {
+    const chatId = "ayuda_" + alerta.id + "_" + ayudanteId;
+    setChatAbierto({ chatId, alerta });
+  };
+
   const alertasOtros = alertasActivas.filter(a => a.userId !== user.uid);
   const puntosFiltrados = categoriaFiltro === "Todos" ? puntosUtiles : puntosUtiles.filter(p => p.tipo === categoriaFiltro);
+
   const radarTabs = [
     { id: "radashis", icon: "👥", label: "Radashis" },
     { id: "puntos", icon: "🧭", label: "Puntos" },
@@ -641,7 +642,7 @@ function Radar({ user, perfil, showToast }) {
                 <span style={{ fontSize: 24 }}>{a.icon}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ color: COLORS.text, fontSize: 13, fontWeight: 700 }}>{a.userNombre} — {a.tipo}</div>
-                  <div style={{ color: COLORS.muted, fontSize: 12 }}>📍 {a.zona} {a.userMoto && "· 🏍️ " + a.userMoto}</div>
+                  <div style={{ color: COLORS.muted, fontSize: 12 }}>📍 {a.zona}{a.userMoto ? " · 🏍️ " + a.userMoto : ""}</div>
                 </div>
               </div>
               <button onClick={() => puedoAyudar(a)} style={{ width: "100%", background: COLORS.red, border: "none", borderRadius: 10, padding: "10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>🤝 Puedo ayudar</button>
@@ -650,15 +651,20 @@ function Radar({ user, perfil, showToast }) {
         </div>
       )}
 
-      {/* Banner mi alerta activa */}
+      {/* Banner mi alerta activa — SIEMPRE visible */}
       {miAlerta && (
-        <div style={{ background: "#1A0000", border: "1px solid " + COLORS.red + "88", borderRadius: 14, padding: 14, marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: 24 }}>🆘</span>
-          <div style={{ flex: 1 }}>
-            <div style={{ color: COLORS.red, fontWeight: 800, fontSize: 13 }}>Tu alerta está activa</div>
-            <div style={{ color: COLORS.muted, fontSize: 12 }}>{miAlerta.tipo} · {miAlerta.zona}</div>
+        <div style={{ background: "#1A0000", border: "1px solid " + COLORS.red + "88", borderRadius: 14, padding: 14, marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+            <span style={{ fontSize: 24 }}>{miAlerta.icon}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ color: COLORS.red, fontWeight: 800, fontSize: 13 }}>Tu alerta está activa</div>
+              <div style={{ color: COLORS.muted, fontSize: 12 }}>{miAlerta.tipo} · {miAlerta.zona}</div>
+            </div>
           </div>
-          <button onClick={desactivarAlerta} style={{ background: COLORS.green, border: "none", borderRadius: 20, padding: "6px 12px", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>✅ Ya estoy bien</button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={desactivarAlerta} style={{ flex: 1, background: COLORS.green, border: "none", borderRadius: 10, padding: "10px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>✅ Ya estoy bien</button>
+            <button onClick={() => { const chatId = "ayuda_" + miAlerta.id + "_ver"; setChatAbierto({ chatId: "ayuda_" + miAlerta.id + "_" + user.uid, alerta: miAlerta }); }} style={{ flex: 1, background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 10, padding: "10px", color: COLORS.text, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>💬 Ver respuestas</button>
+          </div>
         </div>
       )}
 
@@ -745,7 +751,6 @@ function Radar({ user, perfil, showToast }) {
             <div style={{ color: COLORS.red, fontWeight: 800, fontSize: 20 }}>Modo emergencia 🆘</div>
             <div style={{ color: COLORS.muted, fontSize: 13, marginTop: 4 }}>¿Necesitas ayuda? Activa una alerta y un Radashi cercano puede ayudarte.</div>
           </div>
-
           {!miAlerta ? (
             <button onClick={() => setPedirAyuda(true)} style={{ width: "100%", background: COLORS.red, border: "none", borderRadius: 16, padding: 20, color: "#fff", fontWeight: 900, fontSize: 18, cursor: "pointer", marginBottom: 16 }}>
               🆘 Pedir ayuda ahora
@@ -758,7 +763,6 @@ function Radar({ user, perfil, showToast }) {
               <button onClick={desactivarAlerta} style={{ background: COLORS.green, border: "none", borderRadius: 12, padding: "12px 24px", color: "#fff", fontWeight: 900, fontSize: 14, cursor: "pointer" }}>✅ Ya estoy bien</button>
             </div>
           )}
-
           <div style={{ background: "#0A1A0A", border: "1px solid " + COLORS.green + "44", borderRadius: 14, padding: 14 }}>
             <div style={{ color: COLORS.green, fontWeight: 700, fontSize: 13, marginBottom: 4 }}>⚠️ Importante</div>
             <div style={{ color: COLORS.muted, fontSize: 12, lineHeight: 1.6 }}>En caso de emergencia médica real, llama al 911. Esta sección es apoyo entre moteros para situaciones comunes.</div>
@@ -778,6 +782,7 @@ export default function RadashiApp({ user, onLogout }) {
   const [editando, setEditando] = useState(false);
   const [perfil, setPerfil] = useState({});
   const [visor, setVisor] = useState(null);
+  const [miAlerta, setMiAlerta] = useState(null); // Estado global de mi alerta
 
   useEffect(() => {
     if (user) {
@@ -785,6 +790,21 @@ export default function RadashiApp({ user, onLogout }) {
         if (snap.exists()) setPerfil(snap.data());
       });
     }
+  }, [user]);
+
+  // Escuchar si hay alerta activa mía en Firestore al cargar
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, "emergencias"), where("userId", "==", user.uid), where("activa", "==", true), orderBy("createdAt", "desc"));
+    const unsub = onSnapshot(q, snap => {
+      if (snap.docs.length > 0) {
+        const d = snap.docs[0];
+        setMiAlerta({ id: d.id, ...d.data() });
+      } else {
+        setMiAlerta(null);
+      }
+    });
+    return unsub;
   }, [user]);
 
   const showToast = (m) => { setToast(m); setTimeout(() => setToast(null), 3000); };
@@ -812,13 +832,16 @@ export default function RadashiApp({ user, onLogout }) {
               <div style={{ color: COLORS.muted, fontSize: 11 }}>{perfil.nombre || user?.email}</div>
             </div>
           </div>
-          <button onClick={onLogout} style={{ background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 20, padding: "6px 14px", color: COLORS.muted, fontSize: 12, cursor: "pointer" }}>Salir</button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {miAlerta && <div style={{ width: 10, height: 10, borderRadius: "50%", background: COLORS.red, animation: "pulse 1s infinite" }} />}
+            <button onClick={onLogout} style={{ background: COLORS.card, border: "1px solid " + COLORS.border, borderRadius: 20, padding: "6px 14px", color: COLORS.muted, fontSize: 12, cursor: "pointer" }}>Salir</button>
+          </div>
         </div>
       </div>
 
       <div style={{ padding: 16 }}>
         {tab === "feed" && <Feed user={user} perfil={perfil} />}
-        {tab === "cerca" && <Radar user={user} perfil={perfil} showToast={showToast} />}
+        {tab === "cerca" && <Radar user={user} perfil={perfil} showToast={showToast} miAlerta={miAlerta} setMiAlerta={setMiAlerta} />}
 
         {tab === "clan" && (
           <div>
