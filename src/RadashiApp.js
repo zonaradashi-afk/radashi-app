@@ -1075,7 +1075,7 @@ function Radar({ user, perfil, showToast, miAlerta, setMiAlerta, chatGlobal, set
 // ── RadashiApp ────────────────────────────────────────────────────────────────
 
 export default function RadashiApp({ user, onLogout }) {
-  const [tab, setTab] = useState("feed");
+  const [tab, setTab] = useState("cerca");
   const [toast, setToast] = useState(null);
   const [editando, setEditando] = useState(false);
   const [perfil, setPerfil] = useState({});
@@ -1175,13 +1175,12 @@ export default function RadashiApp({ user, onLogout }) {
   };
 
   const tabs = [
-    { id: "feed", icon: "🏠", label: "Inicio" },
     { id: "cerca", icon: "📡", label: "Radar" },
+    { id: "perfil", icon: "🏍️", label: "Mi Moto" },
     { id: "clan", icon: "⭐", label: "Clan" },
-    { id: "perfil", icon: "👤", label: "Mi Moto" },
   ];
 
-  const subtitulos = { feed: perfil.nombre || user?.email, cerca: "Radar · Comunidad", clan: "Clan · Contenido exclusivo", perfil: "Mi Moto · Perfil técnico" };
+  const subtitulos = { cerca: "Radar · Comunidad", perfil: "Mi Moto · Perfil técnico", clan: "Clan · Contenido exclusivo" };
 
   if (editando) return <EditarPerfil user={user} perfil={perfil} onGuardar={(data) => { setPerfil(data); setEditando(false); showToast("Perfil guardado 🔥"); }} onCancelar={() => setEditando(false)} />;
   if (visor) return <Visor url={visor.url} titulo={visor.titulo} onCerrar={() => setVisor(null)} />;
@@ -1250,8 +1249,21 @@ export default function RadashiApp({ user, onLogout }) {
       )}
 
       <div style={{ padding: 14 }}>
-        {tab === "feed" && <Feed user={user} perfil={perfil} />}
         {tab === "cerca" && <Radar user={user} perfil={perfil} showToast={showToast} miAlerta={miAlerta} setMiAlerta={setMiAlerta} chatGlobal={chatGlobal} setChatGlobal={setChatGlobal} />}
+        {tab === "perfil" && (
+          <div>
+            <div style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, borderTop: `3px solid ${C.orange}`, padding: 14, marginBottom: 12, display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 8px #00000008" }}>
+              <Avatar foto={perfil.foto} size={54} />
+              <div style={{ flex: 1 }}>
+                <div style={{ color: C.text, fontWeight: 900, fontSize: 17 }}>{perfil.nombre || "Sin nombre"}</div>
+                <div style={{ color: C.muted, fontSize: 11 }}>{user?.email}</div>
+                {perfil.ciudad && <div style={{ color: C.muted, fontSize: 11 }}>📍 {perfil.ciudad}</div>}
+              </div>
+              <button onClick={() => setEditando(true)} style={{ background: C.orangeGlow, border: `1px solid ${C.orange}`, color: C.orange, borderRadius: 20, padding: "6px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>✏️ Editar</button>
+            </div>
+            <MiMoto user={user} />
+          </div>
+        )}
         {tab === "clan" && (
           <div>
             <div style={{ background: "linear-gradient(135deg, #FFF8F0, #FFF3E0)", border: `1px solid ${C.orange}44`, borderTop: `3px solid ${C.orange}`, borderRadius: 12, padding: 18, marginBottom: 12, boxShadow: "0 2px 8px #ffa22e18" }}>
@@ -1266,20 +1278,6 @@ export default function RadashiApp({ user, onLogout }) {
               <div style={{ color: C.muted, fontSize: 12, marginBottom: 14 }}>Todo lo que tu moto necesita en un solo lugar</div>
               <BtnMain onClick={() => setVisor({ url: "https://tallerdemotoszonaradashi.com/", titulo: "Tienda Zona Radashi" })}>IR A LA TIENDA 🛍️</BtnMain>
             </div>
-          </div>
-        )}
-        {tab === "perfil" && (
-          <div>
-            <div style={{ background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`, borderTop: `3px solid ${C.orange}`, padding: 14, marginBottom: 12, display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 8px #00000008" }}>
-              <Avatar foto={perfil.foto} size={54} />
-              <div style={{ flex: 1 }}>
-                <div style={{ color: C.text, fontWeight: 900, fontSize: 17 }}>{perfil.nombre || "Sin nombre"}</div>
-                <div style={{ color: C.muted, fontSize: 11 }}>{user?.email}</div>
-                {perfil.ciudad && <div style={{ color: C.muted, fontSize: 11 }}>📍 {perfil.ciudad}</div>}
-              </div>
-              <button onClick={() => setEditando(true)} style={{ background: C.orangeGlow, border: `1px solid ${C.orange}`, color: C.orange, borderRadius: 20, padding: "6px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>✏️ Editar</button>
-            </div>
-            <MiMoto user={user} />
           </div>
         )}
       </div>
