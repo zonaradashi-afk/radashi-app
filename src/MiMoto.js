@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { db, storage } from "./firebase";
 import { doc, setDoc, getDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { CATALOGO_MOTOS } from "./catalogoMotos";
 
 const COLORS = {
   bg: "#0A0A0A", surface: "#141414", card: "#1A1A1A",
@@ -39,27 +40,45 @@ function Campo({ label, valor, onChange, placeholder, tipo = "text", suffix }) {
   );
 }
 
+// Selector tipo dropdown simple, estilizado para tema oscuro
+function Selector({ label, valor, onChange, opciones, placeholder, disabled }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ color: COLORS.muted, fontSize: 11, marginBottom: 4, fontWeight: 600 }}>{label.toUpperCase()}</div>
+      <select
+        value={valor}
+        onChange={e => onChange(e.target.value)}
+        disabled={disabled}
+        style={{
+          width: "100%", background: disabled ? COLORS.card : COLORS.surface,
+          border: "1px solid " + COLORS.border, borderRadius: 10, padding: "10px 14px",
+          color: disabled ? COLORS.muted : COLORS.text, fontSize: 14, outline: "none",
+          boxSizing: "border-box", opacity: disabled ? 0.5 : 1,
+          WebkitAppearance: "none", appearance: "none",
+        }}
+      >
+        <option value="">{placeholder}</option>
+        {opciones.map(op => <option key={op} value={op}>{op}</option>)}
+      </select>
+    </div>
+  );
+}
+
 // ───────────────────────────────────────────────────────────────────────────
-// PIEZAS — definición de las piezas que mostramos por ahora
+// PIEZAS — definición visual de las piezas que mostramos
 // ───────────────────────────────────────────────────────────────────────────
 
 const PIEZAS_DEFINIDAS = [
   { id: "bujia", nombre: "Bujía", icono: "⚡", explicacion: "Genera la chispa que enciende la mezcla de combustible en el motor.", senal: "Si la moto cuesta trabajo encender o tiembla al ralentí, revisa la bujía." },
   { id: "aceite", nombre: "Aceite", icono: "🛢️", explicacion: "Lubrica el motor y reduce el desgaste entre piezas metálicas.", senal: "Cámbialo según el intervalo recomendado, aunque se vea limpio." },
   { id: "filtroAire", nombre: "Filtro de aire", icono: "🌬️", explicacion: "Evita que entre polvo y partículas al motor mientras respira aire.", senal: "Si notas que la moto pierde fuerza o gasta más gasolina, revísalo." },
-  { id: "filtroGasolina", nombre: "Filtro de gasolina", icono: "⛽", explicacion: "Atrapa impurezas del combustible antes de llegar al motor.", senal: "Si la moto falla o se ahoga en aceleración, puede estar sucio." },
+  { id: "filtroAceite", nombre: "Filtro de aceite", icono: "🧰", explicacion: "Atrapa partículas e impurezas del aceite mientras circula por el motor.", senal: "Se cambia junto con el aceite en cada servicio." },
+  { id: "kitTraccion", nombre: "Kit de tracción", icono: "⛓️", explicacion: "Cadena, piñón y catalina — transmiten la fuerza del motor a la llanta trasera.", senal: "Si la cadena suena, está floja o oxidada, revisa el kit completo." },
 ];
-
-// Construye el ID del documento de la moto: marca_modelo_anio en minúsculas sin espacios
-function construirMotoId(marca, modelo, anio) {
-  if (!marca || !modelo) return null;
-  const limpiar = (s) => (s || "").toString().trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
-  return `${limpiar(marca)}_${limpiar(modelo)}_${limpiar(anio)}`;
-}
 
 // ── Modal: aportar foto/dato de una pieza ────────────────────────────────────
 
-function AportarPieza({ user, motoId, piezaId, piezaNombre, marca, modelo, anio, onCerrar, onAportado }) {
+function AportarPieza({ user, motoId, piezaId, piezaNombre, marca, modelo, version, onCerrar, onAportado }) {
   const [especificacion, setEspecificacion] = useState("");
   const [archivo, setArchivo] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -86,7 +105,7 @@ function AportarPieza({ user, motoId, piezaId, piezaNombre, marca, modelo, anio,
       }
 
       await addDoc(collection(db, "refaccionesEnRevision"), {
-        motoId, marca, modelo, anio,
+        motoId, marca, modelo, version,
         piezaId, piezaNombre,
         especificacion: especificacion.trim(),
         imagen: imagenUrl,
@@ -143,22 +162,69 @@ function AportarPieza({ user, motoId, piezaId, piezaNombre, marca, modelo, anio,
   );
 }
 
+// ── Construye el texto principal y detalle de cada pieza desde el doc de Firestore ──
+
+function extraerInfoPieza(piezaId, motoData) {
+  if (!motoData || !motoData.piezas) return null;
+  const p = motoData.piezas[piezaId];
+  if (!p) return null;
+
+  if (piezaId === "bujia") {
+    if (!p.especificacion) return null;
+    return {
+      principal: p.especificacion,
+      detalle: [
+        p.equivalente && `Equivalente: ${p.equivalente}`,
+        p.luz_mm && `Luz: ${p.luz_mm} mm`,
+      ].filter(Boolean).join(" · "),
+      imagen: p.imagen,
+    };
+  }
+  if (piezaId === "aceite") {
+    if (!p.especificacion) return null;
+    return {
+      principal: p.especificacion,
+      detalle: [
+        p.norma && `Norma: ${p.norma}`,
+        p.capacidad && `Capacidad: ${p.capacidad} L`,
+      ].filter(Boolean).join(" · "),
+      imagen: p.imagen,
+    };
+  }
+  if (piezaId === "filtroAire" || piezaId === "filtroAceite") {
+    if (!p.especificacion) return null;
+    return { principal: p.especificacion, detalle: "", imagen: p.imagen };
+  }
+  if (piezaId === "kitTraccion") {
+    if (!p.cadena_paso) return null;
+    return {
+      principal: `Cadena paso ${p.cadena_paso}`,
+      detalle: [
+        p.eslabones && `${p.eslabones} eslabones`,
+        p.pinon && `Piñón ${p.pinon}`,
+        p.sprocket && `Catalina ${p.sprocket}`,
+      ].filter(Boolean).join(" · "),
+      imagen: p.imagen,
+    };
+  }
+  return null;
+}
+
 // ── Ficha visual de una pieza ────────────────────────────────────────────────
 
-function FichaPieza({ pieza, dato, user, motoId, marca, modelo, anio, onRefrescar }) {
+function FichaPieza({ pieza, motoData, motoVerificada, user, motoId, marca, modelo, version, onRefrescar }) {
   const [aportando, setAportando] = useState(false);
   const [expandido, setExpandido] = useState(false);
 
-  // Determinar estado de la pieza
+  const info = extraerInfoPieza(pieza.id, motoData);
+
   let estado = "sinInfo";
-  if (dato?.verificada) estado = "verificado";
-  else if (dato?.aportadoPendiente) estado = "enRevision";
-  else if (dato?.especificacion || dato?.imagen) estado = "aportado";
+  if (info && motoVerificada) estado = "verificado";
+  else if (info && !motoVerificada) estado = "aportado";
 
   const estiloEstado = {
     verificado: { texto: "✅ Verificado por Radashi", color: COLORS.green },
-    aportado: { texto: "🟡 Aportado por usuario", color: COLORS.gold },
-    enRevision: { texto: "⏳ En revisión", color: COLORS.muted },
+    aportado: { texto: "🟡 En base de datos (por validar)", color: COLORS.gold },
     sinInfo: { texto: "❔ Sin información", color: COLORS.muted },
   }[estado];
 
@@ -166,7 +232,7 @@ function FichaPieza({ pieza, dato, user, motoId, marca, modelo, anio, onRefresca
     <div style={{ background: COLORS.card, borderRadius: 16, border: `1px solid ${COLORS.border}`, marginBottom: 12, overflow: "hidden" }}>
       <div onClick={() => setExpandido(!expandido)} style={{ display: "flex", alignItems: "center", gap: 12, padding: 14, cursor: "pointer" }}>
         <div style={{ width: 48, height: 48, borderRadius: 12, background: COLORS.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0, overflow: "hidden" }}>
-          {dato?.imagen ? <img src={dato.imagen} alt={pieza.nombre} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : pieza.icono}
+          {info?.imagen ? <img src={info.imagen} alt={pieza.nombre} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : pieza.icono}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ color: COLORS.text, fontWeight: 800, fontSize: 14 }}>{pieza.nombre}</div>
@@ -177,25 +243,16 @@ function FichaPieza({ pieza, dato, user, motoId, marca, modelo, anio, onRefresca
 
       {expandido && (
         <div style={{ padding: "0 14px 16px" }}>
-          {(estado === "verificado" || estado === "aportado") && (
+          {info && (
             <div style={{ background: COLORS.surface, borderRadius: 10, padding: 12, marginBottom: 10 }}>
-              {dato?.especificacion && (
-                <div style={{ color: COLORS.text, fontSize: 14, fontWeight: 700, marginBottom: 6 }}>{dato.especificacion}</div>
-              )}
+              <div style={{ color: COLORS.text, fontSize: 15, fontWeight: 800, marginBottom: 4 }}>{info.principal}</div>
+              {info.detalle && <div style={{ color: COLORS.muted, fontSize: 12, marginBottom: 8 }}>{info.detalle}</div>}
               <div style={{ color: COLORS.muted, fontSize: 12, lineHeight: 1.5 }}>{pieza.explicacion}</div>
               <div style={{ color: COLORS.orange, fontSize: 11, marginTop: 8, lineHeight: 1.5 }}>💡 {pieza.senal}</div>
             </div>
           )}
 
-          {estado === "enRevision" && (
-            <div style={{ background: COLORS.surface, borderRadius: 10, padding: 12, marginBottom: 10 }}>
-              <div style={{ color: COLORS.muted, fontSize: 13, lineHeight: 1.5 }}>
-                Ya enviaste información para esta pieza. El equipo Radashi la está revisando antes de publicarla.
-              </div>
-            </div>
-          )}
-
-          {estado === "sinInfo" && (
+          {!info && (
             <div style={{ background: COLORS.surface, borderRadius: 10, padding: 12, marginBottom: 10 }}>
               <div style={{ color: COLORS.muted, fontSize: 13, lineHeight: 1.5, marginBottom: 4 }}>
                 Aún no tenemos esta pieza verificada para tu moto.
@@ -204,16 +261,16 @@ function FichaPieza({ pieza, dato, user, motoId, marca, modelo, anio, onRefresca
             </div>
           )}
 
-          {/* Enlace sutil al Clan — aparece siempre, sin importar el estado */}
+          {/* Enlace sutil al Clan — siempre visible */}
           <a
             href={CLAN_URL}
             target="_blank"
             rel="noopener noreferrer"
             style={{
               display: "flex", alignItems: "center", gap: 8,
-              background: "linear-gradient(135deg, #FFF8F0, #FFF3E0)",
+              background: "linear-gradient(135deg, #2A1F0F, #2A1A05)",
               border: `1px solid ${COLORS.orange}44`, borderRadius: 10,
-              padding: "10px 12px", marginBottom: 4, textDecoration: "none",
+              padding: "10px 12px", marginBottom: info ? 0 : 4, textDecoration: "none",
             }}
           >
             <span style={{ fontSize: 16 }}>⭐</span>
@@ -226,11 +283,11 @@ function FichaPieza({ pieza, dato, user, motoId, marca, modelo, anio, onRefresca
             <span style={{ color: COLORS.orange, fontSize: 14 }}>↗</span>
           </a>
 
-          {/* Solo se puede aportar si está sin info */}
-          {estado === "sinInfo" && (
+          {/* Solo se puede aportar si no hay info */}
+          {!info && (
             <button
               onClick={() => setAportando(true)}
-              style={{ width: "100%", background: COLORS.orangeGlow, border: `1px solid ${COLORS.orange}`, borderRadius: 10, padding: 11, color: COLORS.orange, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+              style={{ width: "100%", background: COLORS.orangeGlow, border: `1px solid ${COLORS.orange}`, borderRadius: 10, padding: 11, color: COLORS.orange, fontWeight: 700, fontSize: 13, cursor: "pointer", marginTop: 10 }}
             >
               📷 Aportar foto o dato
             </button>
@@ -246,7 +303,7 @@ function FichaPieza({ pieza, dato, user, motoId, marca, modelo, anio, onRefresca
           piezaNombre={pieza.nombre}
           marca={marca}
           modelo={modelo}
-          anio={anio}
+          version={version}
           onCerrar={() => setAportando(false)}
           onAportado={onRefrescar}
         />
@@ -255,81 +312,136 @@ function FichaPieza({ pieza, dato, user, motoId, marca, modelo, anio, onRefresca
   );
 }
 
+// ── Ficha de info general de la moto (llantas, batería, frenos, problemas comunes) ──
+
+function InfoGeneralMoto({ motoData }) {
+  if (!motoData) return null;
+  const tieneExtra = motoData.llantas?.delantera || motoData.bateria || motoData.frenos?.delantero || motoData.problemasComunes;
+  if (!tieneExtra) return null;
+
+  return (
+    <Seccion titulo="🔍 Más datos de esta moto">
+      {motoData.llantas?.delantera && (
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: `1px solid ${COLORS.border}` }}>
+          <span style={{ color: COLORS.muted, fontSize: 12 }}>Llanta delantera</span>
+          <span style={{ color: COLORS.text, fontSize: 12, fontWeight: 600 }}>{motoData.llantas.delantera}</span>
+        </div>
+      )}
+      {motoData.llantas?.trasera && (
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: `1px solid ${COLORS.border}` }}>
+          <span style={{ color: COLORS.muted, fontSize: 12 }}>Llanta trasera</span>
+          <span style={{ color: COLORS.text, fontSize: 12, fontWeight: 600 }}>{motoData.llantas.trasera}</span>
+        </div>
+      )}
+      {motoData.bateria && (
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: `1px solid ${COLORS.border}` }}>
+          <span style={{ color: COLORS.muted, fontSize: 12 }}>Batería</span>
+          <span style={{ color: COLORS.text, fontSize: 12, fontWeight: 600 }}>{motoData.bateria}</span>
+        </div>
+      )}
+      {motoData.frenos?.delantero && (
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: `1px solid ${COLORS.border}` }}>
+          <span style={{ color: COLORS.muted, fontSize: 12 }}>Freno delantero</span>
+          <span style={{ color: COLORS.text, fontSize: 12, fontWeight: 600 }}>{motoData.frenos.delantero}</span>
+        </div>
+      )}
+      {motoData.frenos?.trasero && (
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: motoData.problemasComunes ? `1px solid ${COLORS.border}` : "none" }}>
+          <span style={{ color: COLORS.muted, fontSize: 12 }}>Freno trasero</span>
+          <span style={{ color: COLORS.text, fontSize: 12, fontWeight: 600 }}>{motoData.frenos.trasero}</span>
+        </div>
+      )}
+      {motoData.problemasComunes && (
+        <div style={{ marginTop: 10, background: COLORS.surface, borderRadius: 10, padding: 12 }}>
+          <div style={{ color: COLORS.gold, fontSize: 11, fontWeight: 700, marginBottom: 4 }}>⚠️ PROBLEMAS COMUNES EN ESTE MODELO</div>
+          <div style={{ color: COLORS.muted, fontSize: 12, lineHeight: 1.5 }}>{motoData.problemasComunes}</div>
+        </div>
+      )}
+    </Seccion>
+  );
+}
+
 // ── Tab de Piezas completo ───────────────────────────────────────────────────
 
-function TabPiezas({ user, datosMoto }) {
-  const [piezas, setPiezas] = useState({});
+function TabPiezas({ user, motoSeleccionada }) {
+  const [motoData, setMotoData] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [refrescar, setRefrescar] = useState(0);
 
-  const { marca, modelo, anio } = datosMoto;
-  const motoId = construirMotoId(marca, modelo, anio);
-  const motoCompleta = !!marca && !!modelo;
+  const motoId = motoSeleccionada?.id;
+  const tieneMotoSeleccionada = !!motoId;
 
   useEffect(() => {
-    if (!motoId) { setCargando(false); return; }
+    if (!motoId) { setCargando(false); setMotoData(null); return; }
 
-    const cargarPiezas = async () => {
+    const cargarMoto = async () => {
       setCargando(true);
       try {
-        // 1. Info verificada/oficial de la moto
         const snap = await getDoc(doc(db, "refacciones", motoId));
-        const datosVerificados = snap.exists() ? snap.data() : {};
-
-        // 2. Aportes pendientes del propio usuario para no perder su envío visualmente
-        //    (Simplificado: lo marcamos vía localStorage-like en memoria por sesión.
-        //     Para una versión simple, solo mostramos lo verificado por ahora.)
-        setPiezas(datosVerificados);
+        setMotoData(snap.exists() ? snap.data() : null);
       } catch (e) {
         console.error(e);
-        setPiezas({});
+        setMotoData(null);
       }
       setCargando(false);
     };
 
-    cargarPiezas();
+    cargarMoto();
   }, [motoId, refrescar]);
 
-  if (!motoCompleta) {
+  if (!tieneMotoSeleccionada) {
     return (
       <div style={{ textAlign: "center", padding: "40px 20px" }}>
         <div style={{ fontSize: 44, marginBottom: 12 }}>🏍️</div>
-        <div style={{ color: COLORS.text, fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Completa los datos de tu moto</div>
+        <div style={{ color: COLORS.text, fontWeight: 700, fontSize: 15, marginBottom: 6 }}>Selecciona tu moto</div>
         <div style={{ color: COLORS.muted, fontSize: 13, lineHeight: 1.5 }}>
-          Ve a la pestaña "Mi Moto" y llena marca y modelo para ver las piezas que lleva tu moto.
+          Ve a la pestaña "Mi Moto" y elige marca, modelo y versión para ver las piezas que lleva.
         </div>
       </div>
     );
   }
 
   if (cargando) {
-    return (
-      <div style={{ textAlign: "center", padding: 40, color: COLORS.muted, fontSize: 13 }}>
-        Cargando piezas...
-      </div>
-    );
+    return <div style={{ textAlign: "center", padding: 40, color: COLORS.muted, fontSize: 13 }}>Cargando piezas...</div>;
   }
+
+  const motoVerificada = motoData?.verificada === true;
 
   return (
     <div>
       <div style={{ background: COLORS.card, borderRadius: 12, padding: "10px 14px", marginBottom: 14, border: `1px solid ${COLORS.border}` }}>
-        <div style={{ color: COLORS.orange, fontWeight: 800, fontSize: 12 }}>🏍️ {marca} {modelo} {anio}</div>
-        <div style={{ color: COLORS.muted, fontSize: 11, marginTop: 2 }}>Piezas y refacciones que lleva tu moto</div>
+        <div style={{ color: COLORS.orange, fontWeight: 800, fontSize: 12 }}>
+          🏍️ {motoSeleccionada.marca} {motoSeleccionada.modelo} {motoSeleccionada.version ? `· ${motoSeleccionada.version}` : ""}
+        </div>
+        <div style={{ color: COLORS.muted, fontSize: 11, marginTop: 2 }}>
+          {motoData ? "Piezas y refacciones que lleva tu moto" : "Esta moto aún no está en nuestra base de datos"}
+        </div>
       </div>
+
+      {!motoData && (
+        <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 16, marginBottom: 14, textAlign: "center" }}>
+          <div style={{ color: COLORS.muted, fontSize: 13, lineHeight: 1.5 }}>
+            Esta combinación todavía no tiene datos técnicos cargados. Puedes aportar información en cada pieza y el equipo Radashi la revisará.
+          </div>
+        </div>
+      )}
 
       {PIEZAS_DEFINIDAS.map((pieza) => (
         <FichaPieza
           key={pieza.id}
           pieza={pieza}
-          dato={piezas[pieza.id]}
+          motoData={motoData}
+          motoVerificada={motoVerificada}
           user={user}
           motoId={motoId}
-          marca={marca}
-          modelo={modelo}
-          anio={anio}
+          marca={motoSeleccionada.marca}
+          modelo={motoSeleccionada.modelo}
+          version={motoSeleccionada.version}
           onRefrescar={() => setRefrescar(r => r + 1)}
         />
       ))}
+
+      <InfoGeneralMoto motoData={motoData} />
 
       <div style={{ color: COLORS.muted, fontSize: 11, textAlign: "center", marginTop: 16, lineHeight: 1.6 }}>
         ¿Tienes información de alguna pieza que falta? Tócala y aporta foto o dato. El equipo Radashi la revisa antes de publicarla. 🔧
@@ -344,7 +456,8 @@ function TabPiezas({ user, datosMoto }) {
 
 export default function MiMoto({ user }) {
   const [datos, setDatos] = useState({
-    marca: "", modelo: "", anio: "", cilindraje: "", kmActuales: "",
+    marca: "", modelo: "", version: "", motoId: "",
+    cilindraje: "", kmActuales: "",
     tipoAceite: "", tipoUso: "",
     kmUltimoServicio: "", intervaloServicio: "",
     km1: "", km2: "", litros: "",
@@ -362,6 +475,31 @@ export default function MiMoto({ user }) {
   }, [user]);
 
   const set = (campo) => (val) => setDatos(d => ({ ...d, [campo]: val }));
+
+  // Selección en cascada: marca -> modelo -> versión
+  const marcasDisponibles = Object.keys(CATALOGO_MOTOS).sort();
+  const modelosDisponibles = datos.marca && CATALOGO_MOTOS[datos.marca]
+    ? Object.keys(CATALOGO_MOTOS[datos.marca]).sort()
+    : [];
+  const versionesDisponibles = datos.marca && datos.modelo && CATALOGO_MOTOS[datos.marca]?.[datos.modelo]
+    ? CATALOGO_MOTOS[datos.marca][datos.modelo]
+    : [];
+
+  const handleMarca = (marca) => {
+    setDatos(d => ({ ...d, marca, modelo: "", version: "", motoId: "" }));
+  };
+  const handleModelo = (modelo) => {
+    setDatos(d => ({ ...d, modelo, version: "", motoId: "" }));
+    // Si solo hay una versión, seleccionarla automáticamente
+    const versiones = CATALOGO_MOTOS[datos.marca]?.[modelo] || [];
+    if (versiones.length === 1) {
+      setDatos(d => ({ ...d, modelo, version: versiones[0].version, motoId: versiones[0].id }));
+    }
+  };
+  const handleVersion = (versionTexto) => {
+    const encontrada = versionesDisponibles.find(v => v.version === versionTexto);
+    setDatos(d => ({ ...d, version: versionTexto, motoId: encontrada ? encontrada.id : "" }));
+  };
 
   const guardar = async () => {
     setGuardando(true);
@@ -393,6 +531,10 @@ export default function MiMoto({ user }) {
     { id: "piezas", label: "Piezas" },
   ];
 
+  const motoSeleccionada = datos.motoId
+    ? { id: datos.motoId, marca: datos.marca, modelo: datos.modelo, version: datos.version }
+    : null;
+
   return (
     <div style={{ fontFamily: "system-ui, sans-serif" }}>
       {toast && (
@@ -409,10 +551,45 @@ export default function MiMoto({ user }) {
       {/* MI MOTO */}
       {tab === "moto" && (
         <div>
-          <Seccion titulo="🏍️ Datos de mi moto">
-            <Campo label="Marca" valor={datos.marca} onChange={set("marca")} placeholder="Honda, Yamaha, Kawasaki..." />
-            <Campo label="Modelo" valor={datos.modelo} onChange={set("modelo")} placeholder="CB500F, MT-03..." />
-            <Campo label="Año" valor={datos.anio} onChange={set("anio")} placeholder="2022" tipo="number" />
+          <Seccion titulo="🏍️ Selecciona tu moto">
+            <Selector
+              label="Marca"
+              valor={datos.marca}
+              onChange={handleMarca}
+              opciones={marcasDisponibles}
+              placeholder="Elige tu marca..."
+            />
+            <Selector
+              label="Modelo"
+              valor={datos.modelo}
+              onChange={handleModelo}
+              opciones={modelosDisponibles}
+              placeholder={datos.marca ? "Elige tu modelo..." : "Primero elige una marca"}
+              disabled={!datos.marca}
+            />
+            {versionesDisponibles.length > 1 && (
+              <Selector
+                label="Versión"
+                valor={datos.version}
+                onChange={handleVersion}
+                opciones={versionesDisponibles.map(v => v.version)}
+                placeholder="Elige la versión..."
+                disabled={!datos.modelo}
+              />
+            )}
+            {datos.modelo && versionesDisponibles.length === 1 && (
+              <div style={{ color: COLORS.muted, fontSize: 11, marginBottom: 12 }}>
+                Versión: <span style={{ color: COLORS.orange, fontWeight: 700 }}>{datos.version}</span>
+              </div>
+            )}
+            {datos.marca && modelosDisponibles.length === 0 && (
+              <div style={{ color: COLORS.muted, fontSize: 12, lineHeight: 1.5, marginTop: -4, marginBottom: 8 }}>
+                Aún no tenemos modelos de esta marca en nuestra base de datos.
+              </div>
+            )}
+          </Seccion>
+
+          <Seccion titulo="📋 Datos de mi moto">
             <Campo label="Cilindraje" valor={datos.cilindraje} onChange={set("cilindraje")} placeholder="500" tipo="number" suffix="cc" />
             <Campo label="Kilometraje actual" valor={datos.kmActuales} onChange={set("kmActuales")} placeholder="15000" tipo="number" suffix="km" />
           </Seccion>
@@ -526,10 +703,10 @@ export default function MiMoto({ user }) {
 
       {/* PIEZAS */}
       {tab === "piezas" && (
-        <TabPiezas user={user} datosMoto={{ marca: datos.marca, modelo: datos.modelo, anio: datos.anio }} />
+        <TabPiezas user={user} motoSeleccionada={motoSeleccionada} />
       )}
 
-      {/* Botón guardar — no se muestra en Piezas, ya que ahí se guarda distinto */}
+      {/* Botón guardar — no aplica en Piezas */}
       {tab !== "piezas" && (
         <button onClick={guardar} disabled={guardando} style={{ width: "100%", background: "linear-gradient(135deg, " + COLORS.orange + ", #FF9500)", border: "none", borderRadius: 14, padding: 16, color: "#fff", fontWeight: 900, fontSize: 16, cursor: "pointer", marginTop: 8 }}>
           {guardando ? "Guardando..." : "Guardar 🔥"}
