@@ -1096,12 +1096,35 @@ export default function RadashiApp({ user, onLogout }) {
         )}
         {tab === "clan" && (
           <div>
-            <div style={{ background: "linear-gradient(135deg, #FFF8F0, #FFF3E0)", border: `1px solid ${C.orange}44`, borderTop: `3px solid ${C.orange}`, borderRadius: 12, padding: 18, marginBottom: 12, boxShadow: "0 2px 8px #ffa22e18" }}>
-              <div style={{ color: C.orange, fontSize: 10, fontWeight: 800, letterSpacing: 2, marginBottom: 6 }}>⭐ CLAN RADASHI</div>
-              <div style={{ color: C.text, fontWeight: 900, fontSize: 18, lineHeight: 1.2, marginBottom: 6 }}>Deja de adivinar, empieza a entender tu moto</div>
-              <div style={{ color: C.muted, fontSize: 12, marginBottom: 14 }}>Clases en vivo · Grabaciones · Guías · Comunidad exclusiva</div>
-              <BtnMain onClick={() => setVisor({ url: "https://nas.com/es-mx/zona-radashi/home", titulo: "Clan Radashi" })}>ÚNETE AL CLAN 🔥</BtnMain>
+            <div style={{ textAlign: "center", marginBottom: 16 }}>
+              <div style={{ color: C.orange, fontSize: 10, fontWeight: 800, letterSpacing: 2, marginBottom: 4 }}>⭐ CLAN RADASHI</div>
+              <div style={{ color: C.text, fontWeight: 900, fontSize: 18, lineHeight: 1.2 }}>Aprende a entender tu moto</div>
             </div>
+
+            {/* Tips gratis — placeholders, reemplazar con contenido real */}
+            <div style={{ color: C.muted, fontSize: 10, fontWeight: 800, letterSpacing: 1, marginBottom: 8 }}>TIPS GRATIS PARA EMPEZAR</div>
+
+            {[
+              { icon: "🔧", titulo: "Cómo revisar tu aceite en 3 pasos", texto: "Aprende a checar el nivel y color de tu aceite sin ensuciarte. [Placeholder — reemplazar con tip real]" },
+              { icon: "🔋", titulo: "Señales de que tu batería está fallando", texto: "3 cosas que notas antes de que tu moto no prenda. [Placeholder — reemplazar con tip real]" },
+              { icon: "🛞", titulo: "Cuándo cambiar tus llantas", texto: "La señal que casi nadie revisa hasta que es tarde. [Placeholder — reemplazar con tip real]" },
+            ].map((tip, i) => (
+              <div key={i} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14, marginBottom: 10, display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <span style={{ fontSize: 24, flexShrink: 0 }}>{tip.icon}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ color: C.text, fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{tip.titulo}</div>
+                  <div style={{ color: C.muted, fontSize: 12, lineHeight: 1.5 }}>{tip.texto}</div>
+                </div>
+              </div>
+            ))}
+
+            <div style={{ background: "linear-gradient(135deg, #FFF8F0, #FFF3E0)", border: `1px solid ${C.orange}44`, borderTop: `3px solid ${C.orange}`, borderRadius: 12, padding: 18, marginTop: 16, marginBottom: 12, boxShadow: "0 2px 8px #ffa22e18" }}>
+              <div style={{ color: C.orange, fontSize: 10, fontWeight: 800, letterSpacing: 2, marginBottom: 6 }}>¿QUIERES MÁS?</div>
+              <div style={{ color: C.text, fontWeight: 900, fontSize: 16, lineHeight: 1.2, marginBottom: 6 }}>Clases en vivo, guías completas y comunidad</div>
+              <div style={{ color: C.muted, fontSize: 12, marginBottom: 14 }}>Todo lo que necesitas para dejar de adivinar y entender tu moto de verdad</div>
+              <BtnMain onClick={() => setVisor({ url: "https://nas.com/es-mx/zona-radashi/home", titulo: "Clan Radashi" })}>VER EL CLAN 🔥</BtnMain>
+            </div>
+
             <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderTop: `3px solid ${C.red}`, borderRadius: 12, padding: 18, boxShadow: "0 2px 8px #00000008" }}>
               <div style={{ color: C.red, fontSize: 10, fontWeight: 800, letterSpacing: 2, marginBottom: 6 }}>🛒 TIENDA OFICIAL</div>
               <div style={{ color: C.text, fontWeight: 900, fontSize: 18, lineHeight: 1.2, marginBottom: 6 }}>Refacciones, accesorios y más</div>
