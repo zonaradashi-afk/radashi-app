@@ -10,6 +10,8 @@ const COLORS = {
   green: "#22C55E", red: "#EF4444",
 };
 
+const CLAN_URL = "https://nas.com/es-mx/zona-radashi/home";
+
 function Seccion({ titulo, children }) {
   return (
     <div style={{ background: COLORS.card, borderRadius: 16, border: "1px solid " + COLORS.border, padding: 16, marginBottom: 12 }}>
@@ -201,6 +203,28 @@ function FichaPieza({ pieza, dato, user, motoId, marca, modelo, anio, onRefresca
               <div style={{ color: COLORS.muted, fontSize: 12, lineHeight: 1.5 }}>{pieza.explicacion}</div>
             </div>
           )}
+
+          {/* Enlace sutil al Clan — aparece siempre, sin importar el estado */}
+          <a
+            href={CLAN_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              background: "linear-gradient(135deg, #FFF8F0, #FFF3E0)",
+              border: `1px solid ${COLORS.orange}44`, borderRadius: 10,
+              padding: "10px 12px", marginBottom: 4, textDecoration: "none",
+            }}
+          >
+            <span style={{ fontSize: 16 }}>⭐</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ color: COLORS.orange, fontWeight: 700, fontSize: 12 }}>
+                Aprende a cambiar {pieza.nombre.toLowerCase()} paso a paso
+              </div>
+              <div style={{ color: COLORS.muted, fontSize: 10 }}>en el Clan Radashi</div>
+            </div>
+            <span style={{ color: COLORS.orange, fontSize: 14 }}>↗</span>
+          </a>
 
           {/* Solo se puede aportar si está sin info */}
           {estado === "sinInfo" && (
